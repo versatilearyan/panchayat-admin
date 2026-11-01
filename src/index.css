@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+/* Panchayat colours and fonts, shared with the main app */
+@theme {
+  --color-ink: #111114;
+  --color-ink-2: #18171d;
+  --color-surface: #212027;
+  --color-surface-2: #2b2932;
+  --color-line: rgb(255 241 213 / 0.08);
+  --color-line-strong: rgb(255 241 213 / 0.16);
+  --color-coral: #f4515b;
+  --color-gold: #e7bc72;
+  --color-cream: #fff1d5;
+  --color-muted: #a7a2ad;
+  --color-ok: #6fe0a6;
+  --color-warn: #f2b45c;
+  --color-info: #8fa8ff;
+
+  --font-display: "Bricolage Grotesque Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html { color-scheme: dark; }
+  body {
+    background: var(--color-ink);
+    color: var(--color-cream);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: rgb(244 81 91 / 0.45); }
+  :focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; border-radius: 6px; }
+  input, textarea, select { font: inherit; }
+}
+
+@layer components {
+  .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(255 241 213 / 0.14) transparent; }
+  .field {
+    @apply w-full rounded-xl border border-line-strong bg-ink px-3.5 py-2.5 text-sm text-cream placeholder:text-muted/70 outline-none transition-colors focus:border-gold/70;
+  }
+  .label { @apply mb-1.5 block text-xs font-semibold tracking-wide text-muted uppercase; }
+}

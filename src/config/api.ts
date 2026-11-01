@@ -1,0 +1,37 @@
+/**
+ * Where the Spring Boot backend lives. This is the only place the URL is read.
+ *
+ * Set VITE_API_BASE_URL in .env.local (never committed), for example
+ *   VITE_API_BASE_URL=https://xxxx.ngrok-free.app
+ * and restart `npm run dev`. Leave it empty to run the panel on demo data.
+ * ngrok URLs change every time the tunnel restarts, so update it when that happens.
+ */
+export const BACKEND_URL = (import.meta.env.VITE_API_BASE_URL ?? "").trim().replace(/\/+$/, "");
+
+/** True when sign-in and the Shop talk to the real backend. */
+export const BACKEND_ENABLED = BACKEND_URL !== "";
+
+/**
+ * Where requests go. In `npm run dev` they go to this same origin and Vite forwards
+ * /api to BACKEND_URL (see vite.config.ts), which avoids CORS. A production build
+ * calls BACKEND_URL directly, so that server must allow the panel's origin.
+ */
+export const API_BASE_URL = import.meta.env.DEV ? "" : BACKEND_URL;
+
+/** How long to wait for the backend before calling it unreachable. */
+export const API_TIMEOUT_MS = 20_000;
+
+export const ENDPOINTS = {
+  login: "/api/admin/auth/login",
+  shopCategories: "/api/v1/admin/shop/categories",
+  shopProducts: "/api/v1/admin/shop/products",
+  shopAssetUpload: "/api/v1/admin/shop/assets/upload",
+  coinPacks: "/api/v1/admin/coin-packs",
+  redPackets: "/api/v1/admin/red-packets",
+  /** + /{userId}/credit, /{userId}/debit, /{userId}/transactions */
+  adminWallets: "/api/v1/admin/wallets",
+  /** + /{userId}, /grant, /extend, /points/credit, /points/debit */
+  adminVipUsers: "/api/v1/admin/vip/users",
+  /** GET list; POST /upload (multipart: file, vipLevel, type, format) */
+  vipCosmetics: "/api/v1/admin/vip/cosmetics",
+} as const;

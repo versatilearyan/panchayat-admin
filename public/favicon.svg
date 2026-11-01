@@ -1,0 +1,8 @@
+<!-- PLACEHOLDER favicon: gold crown on night background. Replace with the official icon. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#101014"/>
+  <path d="M10 24 L20 34 L32 14 L44 34 L54 24 L50 46 Q32 51 14 46 Z" fill="#e7bc72"/>
+  <circle cx="10" cy="23" r="3.5" fill="#ff647c"/>
+  <circle cx="32" cy="13" r="4" fill="#f4515b"/>
+  <circle cx="54" cy="23" r="3.5" fill="#ff647c"/>
+</svg>
