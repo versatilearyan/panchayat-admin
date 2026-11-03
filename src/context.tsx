@@ -3,12 +3,17 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import { can as roleCan, type Permission } from "./api/roles";
 import type { AdminSession } from "./api/session";
 
-export const PAGES = ["overview", "users", "rooms", "reports", "gifts", "shop", "coinPacks", "redPackets", "wallets", "vip", "vipCosmetics", "pricing", "sarpanch", "activity", "staff", "settings"] as const;
+export const PAGES = ["overview", "users", "rooms", "reports", "gifts", "shop", "coinPacks", "redPackets", "wallets", "vip", "vipCosmetics", "rewards", "revenue", "payments", "coinLogs", "audit", "pricing", "sarpanch", "activity", "staff", "settings"] as const;
 export type Page = (typeof PAGES)[number];
 
 /** Pages that need a permission to open. The rest are open to all staff. */
 export const PAGE_PERMISSION: Partial<Record<Page, Permission>> = {
-  gifts: "gifts.manage",
+  gifts: "catalog.manage",
+  rewards: "catalog.manage",
+  revenue: "finance.view",
+  payments: "finance.view",
+  coinLogs: "finance.view",
+  audit: "finance.view",
   shop: "store.manage",
   coinPacks: "wallet.manage",
   redPackets: "wallet.manage",

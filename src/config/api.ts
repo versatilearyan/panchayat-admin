@@ -34,4 +34,10 @@ export const ENDPOINTS = {
   adminVipUsers: "/api/v1/admin/vip/users",
   /** GET list; POST /upload (multipart: file, vipLevel, type, format) */
   vipCosmetics: "/api/v1/admin/vip/cosmetics",
+  /** Gifts: list, add, edit, files. Super Admin, Admin and Moderator. */
+  manageGifts: "/api/v1/admin/manage/gifts",
+  /** Spend rewards (random and guaranteed). Super Admin, Admin and Moderator. */
+  manageRewards: "/api/v1/admin/manage/rewards",
+  /** + /revenue, /payments, /coin-transactions, /audit. Super Admin only. */
+  superAdmin: "/api/v1/admin/super",
 } as const;

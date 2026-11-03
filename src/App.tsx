@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ComponentType } from "react";
-import { Activity, Coins, Flag, Gift, IndianRupee, Mail, Landmark, LayoutDashboard, Lock, LogOut, MessagesSquare, Settings, ShoppingBag, UserCog, Users, Wallet, Crown, Sparkles } from "lucide-react";
+import { Activity, BarChart3, Coins, CreditCard, Dice5, FileClock, ScrollText, Flag, Gift, IndianRupee, Mail, Landmark, LayoutDashboard, Lock, LogOut, MessagesSquare, Settings, ShoppingBag, UserCog, Users, Wallet, Crown, Sparkles } from "lucide-react";
 import { adminApi } from "./api";
 import { getSession, setSession, type AdminSession } from "./api/session";
 import { BACKEND_ENABLED } from "./config/api";
@@ -12,6 +12,9 @@ import { RoomsPage } from "./pages/Rooms";
 import { ReportsPage } from "./pages/Reports";
 import { ActivityPage } from "./pages/Activity";
 import { GiftsPage } from "./pages/Gifts";
+import { GiftsLivePage } from "./pages/GiftsLive";
+import { SpendRewardsPage } from "./pages/SpendRewards";
+import { AuditLogPage, CoinLogsPage, PaymentsPage, RevenuePage } from "./pages/Finance";
 import { ShopPage } from "./pages/Shop";
 import { PricingPage } from "./pages/Pricing";
 import { CoinPacksPage } from "./pages/CoinPacks";
@@ -69,10 +72,15 @@ const NAV: { page: Page; label: string; icon: typeof Users; child?: boolean }[] 
   { page: "gifts", label: "Gifts", icon: Gift },
   { page: "shop", label: "Shop items", icon: ShoppingBag },
   { page: "coinPacks", label: "Coin packs", icon: Coins },
+  { page: "rewards", label: "Spend rewards", icon: Dice5, child: true },
   { page: "redPackets", label: "Red packets", icon: Mail },
   { page: "wallets", label: "Wallets", icon: Wallet },
   { page: "vip", label: "VIP Management", icon: Crown },
   { page: "vipCosmetics", label: "Cosmetics", icon: Sparkles, child: true },
+  { page: "revenue", label: "Revenue", icon: BarChart3 },
+  { page: "payments", label: "Payments", icon: CreditCard, child: true },
+  { page: "coinLogs", label: "Coin logs", icon: ScrollText, child: true },
+  { page: "audit", label: "Audit log", icon: FileClock, child: true },
   { page: "pricing", label: "Pricing", icon: IndianRupee },
   { page: "sarpanch", label: "Sarpanch", icon: Landmark },
   { page: "activity", label: "Activity log", icon: Activity },
@@ -85,7 +93,13 @@ const PAGE_VIEW: Record<Page, ComponentType> = {
   users: UsersPage,
   rooms: RoomsPage,
   reports: ReportsPage,
-  gifts: GiftsPage,
+  // With the backend connected, gifts are the server's; otherwise the demo page
+  gifts: BACKEND_ENABLED ? GiftsLivePage : GiftsPage,
+  rewards: SpendRewardsPage,
+  revenue: RevenuePage,
+  payments: PaymentsPage,
+  coinLogs: CoinLogsPage,
+  audit: AuditLogPage,
   shop: ShopPage,
   coinPacks: CoinPacksPage,
   redPackets: RedPacketsPage,
@@ -138,7 +152,7 @@ function DemoNote() {
 function LiveNote() {
   return (
     <div className="mb-3 rounded-lg bg-ok/10 px-2.5 py-2 text-[11px] leading-snug text-ok">
-      Signed in with the server. Shop items, coin packs, red packets, wallets and VIP are live; other pages still show demo data until their APIs are connected.
+      Signed in with the server. Gifts, spend rewards, revenue, payments, coin logs, the audit log, Shop items, coin packs, red packets, wallets and VIP are live; other pages still show demo data until their APIs are connected.
     </div>
   );
 }

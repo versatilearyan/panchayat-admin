@@ -171,7 +171,7 @@ export function FileField({
 }
 
 /** Parses an SVGA file in memory. Rejects files that aren't valid SVGA 2.x. */
-async function checkSvgaPlays(file: File) {
+export async function checkSvgaPlays(file: File) {
   if (!file.name.toLowerCase().endsWith(".svga")) throw new Error("Pick an .svga file");
   const url = URL.createObjectURL(file);
   const parser = new Parser({ isDisableWebWorker: true });

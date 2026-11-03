@@ -35,9 +35,15 @@ export type Permission =
   /** Coin packs and red packet products on the backend (SUPER_ADMIN there too). */
   | "wallet.manage"
   /** VIP membership and VIP points on the backend (SUPER_ADMIN there too). */
-  | "vip.manage";
+  | "vip.manage"
+  /** Gifts and spend rewards on the backend: every staff role (management). */
+  | "catalog.manage"
+  /** Deleting gifts and spend rewards: Super Admins. */
+  | "catalog.delete"
+  /** Revenue, payments, coin logs and the audit log: Super Admins. */
+  | "finance.view";
 
-const MODERATOR: Permission[] = ["users.warn", "users.mute", "users.kick", "reports.handle"];
+const MODERATOR: Permission[] = ["users.warn", "users.mute", "users.kick", "reports.handle", "catalog.manage"];
 
 const ADMIN: Permission[] = [
   ...MODERATOR,
@@ -52,7 +58,7 @@ const ADMIN: Permission[] = [
   "pricing.view",
 ];
 
-const SUPER_ADMIN: Permission[] = [...ADMIN, "users.rename", "sarpanch.manage", "rooms.delete", "gifts.delete", "store.delete", "pricing.edit", "staff.manage", "settings.edit", "demo.reset", "wallet.manage", "vip.manage"];
+const SUPER_ADMIN: Permission[] = [...ADMIN, "users.rename", "sarpanch.manage", "rooms.delete", "gifts.delete", "store.delete", "pricing.edit", "staff.manage", "settings.edit", "demo.reset", "wallet.manage", "vip.manage", "catalog.delete", "finance.view"];
 
 export const ROLE_PERMISSIONS: Record<Role, ReadonlySet<Permission>> = {
   moderator: new Set(MODERATOR),
@@ -63,9 +69,9 @@ export const ROLE_PERMISSIONS: Record<Role, ReadonlySet<Permission>> = {
 export const ROLE_LABEL: Record<Role, string> = { moderator: "Moderator", admin: "Admin", super_admin: "Super Admin" };
 
 export const ROLE_SUMMARY: Record<Role, string> = {
-  moderator: "Warn, mute and kick users, and handle reports.",
+  moderator: "Warn, mute and kick users, handle reports, and manage gifts and spend rewards.",
   admin: "Everything a moderator does, plus bans, coins (up to 1 lakh at a time), giving VIP and items, creating rooms, and adding gifts and products.",
-  super_admin: "Everything. Also changing users' names, the Sarpanch account, pricing for VIP, coins, rings and bubbles, deleting gifts and products, staff accounts and app settings.",
+  super_admin: "Everything. Also revenue, payments, coin logs and the audit log, deleting gifts and rewards, changing users' names, the Sarpanch account, pricing for VIP, coins, rings and bubbles, deleting gifts and products, staff accounts and app settings.",
 };
 
 /** Largest single coin change for each role. Super admins share the global cap. */
