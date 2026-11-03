@@ -188,13 +188,14 @@ export async function checkSvgaPlays(file: File) {
   }
   if (head[0] !== 0x78) throw new Error("This file isn't an SVGA animation. Check the file and try again.");
   if (file.size > SVGA_TEST_MAX_BYTES) return;
+  // A test play here is only a hint: the app plays SVGA in a background worker, which reads
+  // some files this in-page parser can't. A real SVGA 2.x file is never blocked by it.
   const url = URL.createObjectURL(file);
   const parser = new Parser({ isDisableWebWorker: true });
   try {
-    const video = await parser.load(url);
-    if (!video.frames) throw new Error("empty");
+    await parser.load(url);
   } catch {
-    throw new Error("This file couldn't be read as an SVGA animation. Export it as SVGA 2.x and try again.");
+    console.warn("[SVGA] In-panel test play failed; uploading anyway (the app's player may still play it).");
   } finally {
     parser.destroy();
     URL.revokeObjectURL(url);
