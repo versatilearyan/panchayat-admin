@@ -170,9 +170,24 @@ export function FileField({
   );
 }
 
-/** Parses an SVGA file in memory. Rejects files that aren't valid SVGA 2.x. */
+/** Bigger SVGA files skip the in-page test play: parsing them here can fail for lack of memory even though the app plays them. */
+const SVGA_TEST_MAX_BYTES = 20 * 1024 * 1024;
+
+/**
+ * Checks an SVGA before it's uploaded:
+ * - SVGA 1.x (a zip, starts with "PK"): refused, the app's player can't play it;
+ * - SVGA 2.x (zlib, starts with 0x78): small files are test-played here,
+ *   big ones go straight up (the server checks the type again);
+ * - anything else: refused.
+ */
 export async function checkSvgaPlays(file: File) {
   if (!file.name.toLowerCase().endsWith(".svga")) throw new Error("Pick an .svga file");
+  const head = new Uint8Array(await file.slice(0, 2).arrayBuffer());
+  if (head[0] === 0x50 && head[1] === 0x4b) {
+    throw new Error("This is an old SVGA 1.x file, which the app can't play. Export it as SVGA 2.x (or upload it as MP4) and try again.");
+  }
+  if (head[0] !== 0x78) throw new Error("This file isn't an SVGA animation. Check the file and try again.");
+  if (file.size > SVGA_TEST_MAX_BYTES) return;
   const url = URL.createObjectURL(file);
   const parser = new Parser({ isDisableWebWorker: true });
   try {
