@@ -185,7 +185,8 @@ export function apiUpload<T>(path: string, form: FormData, onProgress?: (fractio
     const req = new XMLHttpRequest();
     xhr = req;
     req.open("POST", `${API_BASE_URL}${path}`);
-    req.timeout = 120_000;
+    // Big SVGA and MP4 files (up to 100 MB) can take a while on a slow connection
+    req.timeout = 600_000;
     req.setRequestHeader("Accept", "application/json");
     req.setRequestHeader("ngrok-skip-browser-warning", "true");
     req.setRequestHeader("Authorization", auth);

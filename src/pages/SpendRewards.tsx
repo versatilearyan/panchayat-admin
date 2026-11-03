@@ -16,7 +16,7 @@ import { Badge, Button, Card, Chips, Empty, fmtCoins, Loading, Modal, NumberFiel
 import { ConfirmDialog, Field, ListProblem, Pager, useList } from "../components/WalletParts";
 import { MEDIA_EXTS, rewardService, typeLabel, type ItemInput, type Paged, type RewardGrant, type RewardItem, type RewardKind, type RewardRule } from "../services/rewardService";
 import { giftCatalogService, type ServerGift } from "../services/giftCatalogService";
-import { MediaPreview, UploadSlot } from "../components/MediaParts";
+import { mediaHref, MediaPreview, UploadSlot } from "../components/MediaParts";
 
 type Tab = "RANDOM" | "GUARANTEED" | "winners";
 type Dialog =
@@ -484,8 +484,8 @@ function ItemForm({ rule, item, gifts, onSaved, onClose }: { rule: RewardRule; i
             onRemove={async () => fileDone(await rewardService.removeFile(item.id, "sound"), "Sound removed")}
             onError={err}
           />
-          {item.mediaFormat === "MP3" && item.mediaUrl ? <audio src={item.mediaUrl} controls className="w-full" /> : null}
-          {item.soundUrl ? <audio src={item.soundUrl} controls className="w-full" /> : null}
+          {item.mediaFormat === "MP3" && item.mediaUrl ? <audio src={mediaHref(item.mediaUrl) ?? undefined} controls className="w-full" /> : null}
+          {item.soundUrl ? <audio src={mediaHref(item.soundUrl) ?? undefined} controls className="w-full" /> : null}
           <div className="flex justify-end pt-1">
             <Button onClick={onClose}>Done</Button>
           </div>

@@ -40,4 +40,6 @@ export const ENDPOINTS = {
   manageRewards: "/api/v1/admin/manage/rewards",
   /** + /revenue, /payments, /coin-transactions, /audit. Super Admin only. */
   superAdmin: "/api/v1/admin/super",
+  /** App users: list and counts. Admin and Super Admin. */
+  adminUsers: "/api/v1/admin/users",
 } as const;

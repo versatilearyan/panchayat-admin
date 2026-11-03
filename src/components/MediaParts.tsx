@@ -5,19 +5,27 @@
 import { useRef, useState } from "react";
 import { FileUp, Music, Trash2, Upload as UploadIcon, X } from "lucide-react";
 import type { Upload } from "../lib/api";
+import { API_BASE_URL } from "../config/api";
 import { checkSvgaPlays, SvgaPlayer } from "./media";
 import { Button } from "./ui";
 
 export type Media = { url: string | null; format: string | null };
 
-const MAX_MB: Record<string, number> = { png: 5, jpg: 5, jpeg: 5, svga: 15, mp4: 40, mp3: 10 };
+/**
+ * A loadable link for a file on our server. The backend keeps uploads on its own
+ * disk and sends paths like "/uploads/media/…": in development Vite forwards
+ * /uploads to it; a production build loads them from the backend's address.
+ */
+export const mediaHref = (url: string | null | undefined): string | null => (!url ? null : url.startsWith("/") ? `${API_BASE_URL}${url}` : url);
+
+const MAX_MB: Record<string, number> = { png: 10, jpg: 10, jpeg: 10, svga: 100, mp4: 100, mp3: 20 };
 
 /** Format from a URL or file name (".../x.svga" → SVGA). */
 export const formatOf = (name: string) => (name.split("?")[0].split(".").pop() ?? "").toUpperCase();
 
 /** Shows any supported media the way the app would. */
 export function MediaPreview({ media, size = 64, loop = true }: { media: Media; size?: number; loop?: boolean }) {
-  const { url } = media;
+  const url = mediaHref(media.url);
   const format = (media.format ?? (url ? formatOf(url) : "")).toUpperCase();
   const box = { width: size, height: size };
   if (!url)

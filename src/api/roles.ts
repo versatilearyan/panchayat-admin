@@ -41,7 +41,9 @@ export type Permission =
   /** Deleting gifts and spend rewards: Super Admins. */
   | "catalog.delete"
   /** Revenue, payments, coin logs and the audit log: Super Admins. */
-  | "finance.view";
+  | "finance.view"
+  /** The app's real users list and counts on the backend: Admins and Super Admins. */
+  | "users.view";
 
 const MODERATOR: Permission[] = ["users.warn", "users.mute", "users.kick", "reports.handle", "catalog.manage"];
 
@@ -56,6 +58,7 @@ const ADMIN: Permission[] = [
   "gifts.manage",
   "store.manage",
   "pricing.view",
+  "users.view",
 ];
 
 const SUPER_ADMIN: Permission[] = [...ADMIN, "users.rename", "sarpanch.manage", "rooms.delete", "gifts.delete", "store.delete", "pricing.edit", "staff.manage", "settings.edit", "demo.reset", "wallet.manage", "vip.manage", "catalog.delete", "finance.view"];

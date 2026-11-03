@@ -2,12 +2,15 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { can as roleCan, type Permission } from "./api/roles";
 import type { AdminSession } from "./api/session";
+import { BACKEND_ENABLED } from "./config/api";
 
 export const PAGES = ["overview", "users", "rooms", "reports", "gifts", "shop", "coinPacks", "redPackets", "wallets", "vip", "vipCosmetics", "rewards", "revenue", "payments", "coinLogs", "audit", "pricing", "sarpanch", "activity", "staff", "settings"] as const;
 export type Page = (typeof PAGES)[number];
 
 /** Pages that need a permission to open. The rest are open to all staff. */
 export const PAGE_PERMISSION: Partial<Record<Page, Permission>> = {
+  // With the backend, the users list is real data: Admins and Super Admins only
+  ...(BACKEND_ENABLED ? { users: "users.view" as Permission } : {}),
   gifts: "catalog.manage",
   rewards: "catalog.manage",
   revenue: "finance.view",

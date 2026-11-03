@@ -11,7 +11,7 @@ import { Coins, Pencil, Plus, Trash2 } from "lucide-react";
 import { useAdmin } from "../context";
 import { Badge, Button, Card, Chips, Empty, fmtCoins, Loading, Modal, NumberField, PageHeader, Toggle } from "../components/ui";
 import { ConfirmDialog, Field, ListProblem, SearchBox, useList } from "../components/WalletParts";
-import { MediaPreview, UploadSlot } from "../components/MediaParts";
+import { mediaHref, MediaPreview, UploadSlot } from "../components/MediaParts";
 import { GIFT_CATEGORIES, giftCatalogService, type ServerGift } from "../services/giftCatalogService";
 
 type Dialog = { kind: "add" } | { kind: "edit"; id: string } | { kind: "delete"; gift: ServerGift } | null;
@@ -194,7 +194,7 @@ function GiftEditor({ gift, onChange, onClose }: { gift: ServerGift; onChange: (
         <p className="label">Files</p>
         <UploadSlot
           label="Picture (required)"
-          hint="PNG, JPG or JPEG · up to 5 MB · shown in the gift panel"
+          hint="PNG, JPG or JPEG · up to 10 MB · shown in the gift panel"
           exts={["png", "jpg", "jpeg"]}
           current={{ url: gift.imageUrl, format: null }}
           upload={(f, p) => giftCatalogService.upload(gift.id, "image", f, p)}
@@ -203,7 +203,7 @@ function GiftEditor({ gift, onChange, onClose }: { gift: ServerGift; onChange: (
         />
         <UploadSlot
           label="Animation"
-          hint="SVGA (up to 15 MB) or MP4 (up to 40 MB) · plays when the gift is sent"
+          hint="SVGA or MP4 · up to 100 MB · plays when the gift is sent"
           exts={["svga", "mp4"]}
           current={{ url: gift.animationUrl, format: gift.animationFormat }}
           upload={(f, p) => giftCatalogService.upload(gift.id, "animation", f, p)}
@@ -213,7 +213,7 @@ function GiftEditor({ gift, onChange, onClose }: { gift: ServerGift; onChange: (
         />
         <UploadSlot
           label="Sound"
-          hint="MP3 · up to 10 MB · plays with the animation"
+          hint="MP3 · up to 20 MB · plays with the animation"
           exts={["mp3"]}
           current={{ url: gift.soundUrl, format: gift.soundUrl ? "MP3" : null }}
           upload={(f, p) => giftCatalogService.upload(gift.id, "sound", f, p)}
@@ -221,7 +221,7 @@ function GiftEditor({ gift, onChange, onClose }: { gift: ServerGift; onChange: (
           onRemove={async () => done(await giftCatalogService.removeFile(gift.id, "sound"), "Sound removed")}
           onError={err}
         />
-        {gift.soundUrl ? <audio src={gift.soundUrl} controls className="w-full" /> : null}
+        {gift.soundUrl ? <audio src={mediaHref(gift.soundUrl) ?? undefined} controls className="w-full" /> : null}
       </div>
       <div className="flex items-center justify-between gap-3 border-t border-line pt-4">
         <Toggle

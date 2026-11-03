@@ -13,6 +13,7 @@ import { ReportsPage } from "./pages/Reports";
 import { ActivityPage } from "./pages/Activity";
 import { GiftsPage } from "./pages/Gifts";
 import { GiftsLivePage } from "./pages/GiftsLive";
+import { UsersLivePage } from "./pages/UsersLive";
 import { SpendRewardsPage } from "./pages/SpendRewards";
 import { AuditLogPage, CoinLogsPage, PaymentsPage, RevenuePage } from "./pages/Finance";
 import { ShopPage } from "./pages/Shop";
@@ -90,7 +91,7 @@ const NAV: { page: Page; label: string; icon: typeof Users; child?: boolean }[] 
 
 const PAGE_VIEW: Record<Page, ComponentType> = {
   overview: Overview,
-  users: UsersPage,
+  users: BACKEND_ENABLED ? UsersLivePage : UsersPage,
   rooms: RoomsPage,
   reports: ReportsPage,
   // With the backend connected, gifts are the server's; otherwise the demo page
