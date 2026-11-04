@@ -127,7 +127,60 @@ function explain(e: unknown, action: "credit" | "debit" | "history"): never {
   throw e;
 }
 
+export type WalletReasonTotal = { reason: string; type: string; count: number; coins: number };
+export type WalletDetails = {
+  userId?: string;
+  publicId?: string;
+  name?: string;
+  email?: string;
+  avatarUrl?: string;
+  vipActive: boolean;
+  vipLevel?: number;
+  charmPoints?: number;
+  joinedAt?: string;
+  balance?: number;
+  byReason: WalletReasonTotal[];
+  totalIn?: number;
+  totalOut?: number;
+  rupeesPaid?: number;
+  lastActivityAt?: string;
+};
+
+function toDetails(raw: unknown): WalletDetails {
+  const d = obj(raw);
+  if (!d) throw bad();
+  const rows = Array.isArray(d.byReason) ? (d.byReason as unknown[]) : [];
+  return {
+    userId: str(d.userId),
+    publicId: str(d.publicId),
+    name: str(d.name),
+    email: str(d.email),
+    avatarUrl: str(d.avatarUrl),
+    vipActive: d.vipActive === true,
+    vipLevel: num(d.vipLevel),
+    charmPoints: num(d.charmPoints),
+    joinedAt: str(d.joinedAt),
+    balance: num(d.balance),
+    byReason: rows
+      .map((r) => obj(r))
+      .filter((r): r is Record<string, unknown> => Boolean(r))
+      .map((r) => ({ reason: str(r.reason) ?? "OTHER", type: (str(r.type) ?? "").toUpperCase(), count: num(r.count) ?? 0, coins: num(r.coins) ?? 0 })),
+    totalIn: num(d.totalIn),
+    totalOut: num(d.totalOut),
+    rupeesPaid: num(d.rupeesPaid),
+    lastActivityAt: str(d.lastActivityAt),
+  };
+}
+
 export const adminWalletService = {
+  /** Balance, who the user is and their coin totals. Accepts the public ID or the internal ID. */
+  details: async (userId: number) => {
+    try {
+      return toDetails(await apiRequest<unknown>(userPath(userId)));
+    } catch (e) {
+      return explain(e, "history");
+    }
+  },
   credit: async (userId: number, body: WalletAdjustment) => {
     try {
       return toResult(await apiRequest<unknown>(`${userPath(userId)}/credit`, { method: "POST", body }));

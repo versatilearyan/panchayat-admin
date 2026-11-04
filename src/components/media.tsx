@@ -99,12 +99,15 @@ export function FileField({
   onChange,
   label,
   hint,
+  round = false,
 }: {
   kind: "svga" | "image";
   value?: FileRef;
   onChange: (ref: FileRef | undefined) => void;
   label: string;
   hint?: string;
+  /** Show the picture as a round avatar (profile photos). */
+  round?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -134,8 +137,8 @@ export function FileField({
       <span className="label">{label}</span>
       <div className="flex items-start gap-3">
         {kind === "image" ? (
-          <div className="grid h-20 w-20 shrink-0 place-items-center rounded-2xl bg-ink ring-1 ring-line">
-            {value ? <FileImage fileRef={value} className="h-16 w-16" /> : <FileUp className="h-5 w-5 text-muted" aria-hidden />}
+          <div className={`grid h-20 w-20 shrink-0 place-items-center overflow-hidden bg-ink ring-1 ring-line ${round ? "rounded-full" : "rounded-2xl"}`}>
+            {value ? <FileImage fileRef={value} className={round ? "h-full w-full !object-cover" : "h-full w-full p-1.5"} /> : <FileUp className="h-5 w-5 text-muted" aria-hidden />}
           </div>
         ) : value && showPlayer ? (
           <SvgaPlayer src={value} className="h-36 w-36 shrink-0" />

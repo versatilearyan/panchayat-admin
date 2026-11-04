@@ -4,7 +4,7 @@ import { can as roleCan, type Permission } from "./api/roles";
 import type { AdminSession } from "./api/session";
 import { BACKEND_ENABLED } from "./config/api";
 
-export const PAGES = ["overview", "users", "rooms", "reports", "gifts", "shop", "coinPacks", "redPackets", "wallets", "vip", "vipCosmetics", "rewards", "revenue", "payments", "coinLogs", "audit", "pricing", "sarpanch", "activity", "staff", "settings"] as const;
+export const PAGES = ["overview", "users", "rooms", "reports", "gifts", "shop", "coinPacks", "redPackets", "wallets", "vip", "vipCosmetics", "rewards", "revenue", "payments", "coinLogs", "audit", "pricing", "visitorPlans", "dailyTasks", "sarpanch", "activity", "staff", "settings"] as const;
 export type Page = (typeof PAGES)[number];
 
 /** Pages that need a permission to open. The rest are open to all staff. */
@@ -24,6 +24,8 @@ export const PAGE_PERMISSION: Partial<Record<Page, Permission>> = {
   vip: "vip.manage",
   vipCosmetics: "vip.manage",
   pricing: "pricing.view",
+  visitorPlans: "pricing.view",
+  dailyTasks: "pricing.view",
   sarpanch: "sarpanch.manage",
   staff: "staff.manage",
   settings: "settings.edit",

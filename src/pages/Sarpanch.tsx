@@ -2,11 +2,17 @@ import { useMemo, useState } from "react";
 import { BadgeCheck, Megaphone, Send } from "lucide-react";
 import { adminApi, type SarpanchProfile } from "../api";
 import { useAdmin } from "../context";
+import { BACKEND_ENABLED } from "../config/api";
+import { SarpanchLive } from "./SarpanchLive";
 import { FileField, FileImage } from "../components/media";
 import { Button, Card, Chips, Empty, ErrorNote, fmtDate, Loading, PageHeader, timeAgo, useLoad } from "../components/ui";
 
 /** The official Sarpanch account in the app: its profile, and messages sent as Sarpanch. */
 export function SarpanchPage() {
+  return BACKEND_ENABLED ? <SarpanchLive /> : <SarpanchDemo />;
+}
+
+function SarpanchDemo() {
   const { version } = useAdmin();
   const profile = useLoad(() => adminApi.getSarpanch(), [version]);
   return (
@@ -14,9 +20,9 @@ export function SarpanchPage() {
       <PageHeader title="Sarpanch" sub="The official Panchayat account in the app. Everything you send here shows as coming from Sarpanch." />
       {profile.error ? <ErrorNote>{profile.error}</ErrorNote> : null}
       {profile.data ? (
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+        <div className="grid items-stretch gap-5 xl:grid-cols-[minmax(360px,1fr)_minmax(0,1.25fr)]">
           <ProfileCard key={profile.data.updatedAt} profile={profile.data} />
-          <div className="space-y-5">
+          <div className="flex min-w-0 flex-col gap-5">
             <Compose />
             <Sent />
           </div>
@@ -49,23 +55,33 @@ function ProfileCard({ profile }: { profile: SarpanchProfile }) {
   };
 
   return (
-    <Card title="Profile in the app">
+    <Card title="Profile in the app" className="h-full">
       <div className="space-y-4 px-4 py-4">
         {/* How it looks to users */}
-        <div className="flex items-center gap-3 rounded-2xl bg-ink px-3.5 py-3 ring-1 ring-line">
-          <span className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-[#7a2f45] to-[#16151a] font-display text-xl font-bold ring-2 ring-gold/60 [&_img]:h-full [&_img]:w-full [&_img]:object-cover">
-            {f.photo ? <FileImage fileRef={f.photo} /> : f.name.slice(0, 1)}
+        <div className="flex items-center gap-4 rounded-2xl bg-gradient-to-br from-[#2a1620] to-ink px-4 py-4 ring-1 ring-gold/20">
+          {/* Gold frame: a 3px gradient ring, a dark gap, then the photo */}
+          <span className="relative shrink-0">
+            <span className="block rounded-full bg-gradient-to-br from-[#fff1c9] via-[#e7bc72] to-[#9a6a24] p-[3px] shadow-[0_0_18px_rgba(231,188,114,0.35)]">
+              <span className="block rounded-full bg-ink p-[2px]">
+                <span className="grid h-[68px] w-[68px] place-items-center overflow-hidden rounded-full bg-gradient-to-br from-[#7a2f45] to-[#16151a] font-display text-2xl font-bold [&_img]:h-full [&_img]:w-full [&_img]:!object-cover">
+                  {f.photo ? <FileImage fileRef={f.photo} /> : (f.name || "S").slice(0, 1)}
+                </span>
+              </span>
+            </span>
+            <span className="absolute -bottom-0.5 -right-0.5 grid h-6 w-6 place-items-center rounded-full bg-ink ring-2 ring-ink">
+              <BadgeCheck className="h-6 w-6 text-gold" aria-label="Official" />
+            </span>
           </span>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="flex items-center gap-1.5 font-display text-lg font-bold">
               <span className="truncate">{f.name || "Sarpanch"}</span>
-              <BadgeCheck className="h-5 w-5 shrink-0 text-gold" aria-label="Official" />
+              <span className="shrink-0 rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-gold">Official</span>
             </p>
-            <p className="text-xs text-muted">{f.handle} · Official account</p>
-            {f.bio ? <p className="mt-1 line-clamp-2 text-xs text-cream/80">{f.bio}</p> : null}
+            <p className="truncate text-xs text-muted">{f.handle}</p>
+            {f.bio ? <p className="mt-1.5 line-clamp-3 text-xs leading-relaxed text-cream/80">{f.bio}</p> : null}
           </div>
         </div>
-        <FileField kind="image" label="Profile photo" value={f.photo} onChange={(v) => setF((x) => ({ ...x, photo: v }))} hint="Square image. Shown with a gold ring and the official tick." />
+        <FileField kind="image" round label="Profile photo" value={f.photo} onChange={(v) => setF((x) => ({ ...x, photo: v }))} hint="Square image. Shown with a gold ring and the official tick." />
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="sp-name">
@@ -191,11 +207,11 @@ function Sent() {
   const users = useLoad(() => adminApi.listUsers(), [version]);
   const nameOf = (id: string) => users.data?.find((u) => u.id === id)?.name ?? id;
   return (
-    <Card title="Sent">
+    <Card title="Sent" className="flex min-h-[220px] flex-1 flex-col">
       {msgs.loading && !msgs.data ? (
         <Loading />
       ) : msgs.data?.length ? (
-        <ul className="divide-y divide-line">
+        <ul className="max-h-[420px] flex-1 divide-y divide-line overflow-y-auto">
           {msgs.data.map((m) => (
             <li key={m.id} className="px-4 py-3">
               <p className="text-sm font-semibold">{m.title}</p>
@@ -215,7 +231,9 @@ function Sent() {
           ))}
         </ul>
       ) : (
-        <Empty>Nothing sent as Sarpanch yet.</Empty>
+        <div className="grid flex-1 place-items-center">
+          <Empty>Nothing sent as Sarpanch yet.</Empty>
+        </div>
       )}
     </Card>
   );

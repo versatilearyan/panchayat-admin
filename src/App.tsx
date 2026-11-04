@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ComponentType } from "react";
-import { Activity, BarChart3, Coins, CreditCard, Dice5, FileClock, ScrollText, Flag, Gift, IndianRupee, Mail, Landmark, LayoutDashboard, Lock, LogOut, MessagesSquare, Settings, ShoppingBag, UserCog, Users, Wallet, Crown, Sparkles } from "lucide-react";
+import { Activity, BarChart3, Coins, CreditCard, Dice5, FileClock, ScrollText, Flag, Gift, IndianRupee, Mail, Landmark, LayoutDashboard, Lock, LogOut, MessagesSquare, Settings, ShoppingBag, UserCog, Users, Wallet, Crown, Sparkles, Eye, ListChecks } from "lucide-react";
 import { adminApi } from "./api";
 import { getSession, setSession, type AdminSession } from "./api/session";
 import { BACKEND_ENABLED } from "./config/api";
@@ -18,6 +18,8 @@ import { SpendRewardsPage } from "./pages/SpendRewards";
 import { AuditLogPage, CoinLogsPage, PaymentsPage, RevenuePage } from "./pages/Finance";
 import { ShopPage } from "./pages/Shop";
 import { PricingPage } from "./pages/Pricing";
+import { VisitorPlansPage } from "./pages/VisitorPlans";
+import { DailyTasksPage } from "./pages/DailyTasks";
 import { CoinPacksPage } from "./pages/CoinPacks";
 import { RedPacketsPage } from "./pages/RedPackets";
 import { WalletPage } from "./pages/Wallet";
@@ -83,6 +85,8 @@ const NAV: { page: Page; label: string; icon: typeof Users; child?: boolean }[] 
   { page: "coinLogs", label: "Coin logs", icon: ScrollText, child: true },
   { page: "audit", label: "Audit log", icon: FileClock, child: true },
   { page: "pricing", label: "Pricing", icon: IndianRupee },
+  { page: "visitorPlans", label: "Visitor log", icon: Eye, child: true },
+  { page: "dailyTasks", label: "Daily tasks", icon: ListChecks },
   { page: "sarpanch", label: "Sarpanch", icon: Landmark },
   { page: "activity", label: "Activity log", icon: Activity },
   { page: "staff", label: "Staff", icon: UserCog },
@@ -108,6 +112,8 @@ const PAGE_VIEW: Record<Page, ComponentType> = {
   vip: VipPage,
   vipCosmetics: VipCosmeticsPage,
   pricing: PricingPage,
+  visitorPlans: VisitorPlansPage,
+  dailyTasks: DailyTasksPage,
   sarpanch: SarpanchPage,
   activity: ActivityPage,
   staff: StaffPage,

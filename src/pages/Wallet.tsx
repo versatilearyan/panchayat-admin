@@ -21,6 +21,7 @@ import {
   outcomeUnknown,
   type WalletAdjustment,
   type WalletAdjustmentResult,
+  type WalletDetails,
   type WalletTransactionPage,
 } from "../services/adminWalletService";
 
@@ -76,7 +77,7 @@ function WalletLive() {
       <Card className="mb-4">
         <form onSubmit={open} className="flex flex-wrap items-end gap-3 p-4" noValidate>
           <div className="min-w-[220px] flex-1">
-            <Field id="wallet-user" label="User ID" error={typedError} hint="The user's numeric ID from the backend, like 42. There's no user search here yet.">
+            <Field id="wallet-user" label="User ID" error={typedError} hint="The user's ID as shown in the app (like 4228012), or the internal ID.">
               <input
                 id="wallet-user"
                 className="field font-mono"
@@ -110,9 +111,7 @@ function WalletLive() {
               {userId}
             </code>
           </div>
-          <p className="mb-4 text-xs text-muted">
-            The current balance isn't shown: the backend has no admin endpoint to read another user's balance yet. Balances before and after each change come from the server's replies and the history.
-          </p>
+          <DetailsCard key={`d-${userId}`} userId={userId} refresh={refresh} />
           <div className="mb-4 grid gap-4 lg:grid-cols-2">
             <AdjustCard key={`credit-${userId}`} kind="credit" userId={userId} onDone={reload} onLock={setLock} />
             <AdjustCard key={`debit-${userId}`} kind="debit" userId={userId} onDone={reload} onLock={setLock} />
@@ -125,6 +124,120 @@ function WalletLive() {
         </Card>
       )}
     </>
+  );
+}
+
+/* ---------- wallet details ---------- */
+
+const pretty = (r: string) => r.toLowerCase().replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+
+function DetailsCard({ userId, refresh }: { userId: number; refresh: number }) {
+  const [data, setData] = useState<WalletDetails | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let live = true;
+    setLoading(true);
+    adminWalletService
+      .details(userId)
+      .then((d) => {
+        if (live) {
+          setData(d);
+          setError(null);
+        }
+      })
+      .catch((e) => {
+        if (live) setError(e instanceof Error ? e.message : "Couldn't load the wallet.");
+      })
+      .finally(() => {
+        if (live) setLoading(false);
+      });
+    return () => {
+      live = false;
+    };
+  }, [userId, refresh]);
+
+  if (error)
+    return (
+      <div className="mb-4">
+        <ErrorNote>{error}</ErrorNote>
+      </div>
+    );
+  if (!data)
+    return (
+      <Card className="mb-4">
+        <Loading />
+      </Card>
+    );
+  const stat = (label: string, value: string, tone = "text-cream") => (
+    <div className="rounded-lg border border-line bg-cream/5 px-3 py-2.5">
+      <div className="text-[11px] uppercase tracking-wide text-muted">{label}</div>
+      <div className={`mt-0.5 font-mono text-lg font-semibold ${tone}`}>{value}</div>
+    </div>
+  );
+  return (
+    <Card className={`mb-4 ${loading ? "opacity-70" : ""}`}>
+      <div className="flex flex-wrap items-center gap-3 border-b border-line p-4">
+        {data.avatarUrl ? (
+          <img src={data.avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
+        ) : (
+          <div className="grid h-12 w-12 place-items-center rounded-full bg-cream/10 text-lg font-semibold text-cream">{(data.name ?? "?").slice(0, 1).toUpperCase()}</div>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="truncate font-semibold text-cream">{data.name ?? "—"}</span>
+            {data.vipActive ? <Badge tone="gold">VIP {data.vipLevel ?? ""}</Badge> : <Badge>No VIP</Badge>}
+          </div>
+          <div className="mt-0.5 text-xs text-muted">
+            ID <span className="font-mono">{data.publicId ?? "—"}</span> · internal <span className="font-mono">{data.userId ?? "—"}</span>
+            {data.email ? <> · {data.email}</> : null}
+            {data.joinedAt ? <> · joined {when(data.joinedAt)}</> : null}
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-[11px] uppercase tracking-wide text-muted">Balance</div>
+          <div className="font-mono text-2xl font-bold text-gold" data-testid="wallet-balance">
+            {coins(data.balance)}
+          </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4">
+        {stat("Coins in (all time)", coins(data.totalIn), "text-ok")}
+        {stat("Coins out (all time)", coins(data.totalOut), "text-coral")}
+        {stat("Paid (₹)", data.rupeesPaid === undefined ? "—" : `₹${data.rupeesPaid.toLocaleString("en-IN")}`)}
+        {stat("Charm", coins(data.charmPoints))}
+      </div>
+      {data.byReason.length ? (
+        <div className="overflow-x-auto px-4 pb-4">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-[11px] uppercase tracking-wide text-muted">
+                <th className="py-1.5 pr-3 font-medium">Where coins came from / went</th>
+                <th className="py-1.5 pr-3 font-medium">Type</th>
+                <th className="py-1.5 pr-3 text-right font-medium">Times</th>
+                <th className="py-1.5 text-right font-medium">Coins</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.byReason.map((r) => (
+                <tr key={`${r.reason}-${r.type}`} className="border-t border-line">
+                  <td className="py-1.5 pr-3 text-cream">{pretty(r.reason)}</td>
+                  <td className="py-1.5 pr-3">{r.type === "CREDIT" ? <Badge tone="ok">In</Badge> : <Badge tone="coral">Out</Badge>}</td>
+                  <td className="py-1.5 pr-3 text-right font-mono text-muted">{r.count.toLocaleString("en-IN")}</td>
+                  <td className={`py-1.5 text-right font-mono ${r.type === "CREDIT" ? "text-ok" : "text-coral"}`}>
+                    {r.type === "CREDIT" ? "+" : "−"}
+                    {fmtCoins(r.coins)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {data.lastActivityAt ? <p className="mt-2 text-xs text-muted">Last coin activity {when(data.lastActivityAt)}</p> : null}
+        </div>
+      ) : (
+        <p className="px-4 pb-4 text-xs text-muted">No coin activity yet.</p>
+      )}
+    </Card>
   );
 }
 
