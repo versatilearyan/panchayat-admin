@@ -40,6 +40,7 @@ const ACTIONS = [
   { value: "/discover", label: "Discover" },
   { value: "/tasks", label: "Daily tasks" },
   { value: "/moments", label: "Moments" },
+  { value: "/refer", label: "Refer & earn" },
 ];
 const msg = (e: unknown) => (e instanceof Error ? e.message : "That didn't work");
 
