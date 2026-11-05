@@ -6,9 +6,10 @@
  * A gift goes on sale once it has a picture. Super Admins, Admins and
  * Moderators manage gifts; only Super Admins can delete one.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Coins, Pencil, Plus, Trash2 } from "lucide-react";
 import { useAdmin } from "../context";
+import { apiRequest } from "../lib/api";
 import { Badge, Button, Card, Chips, Empty, fmtCoins, Loading, Modal, NumberField, PageHeader, Toggle } from "../components/ui";
 import { ConfirmDialog, Field, ListProblem, SearchBox, useList } from "../components/WalletParts";
 import { mediaHref, MediaPreview, UploadSlot } from "../components/MediaParts";
@@ -28,6 +29,28 @@ export function GiftsLivePage() {
   const shown = gifts.filter((g) => (!cat || g.category === cat) && (!q || `${g.name} ${g.id}`.toLowerCase().includes(q.toLowerCase())));
   const editing = dialog?.kind === "edit" ? (gifts.find((g) => g.id === dialog.id) ?? null) : null;
   const put = (g: ServerGift) => setLocal((m) => ({ ...m, [g.id]: g }));
+  // Which gifts send a server-wide notification (only these, whatever the count)
+  const [announced, setAnnounced] = useState<Set<string>>(new Set());
+  const { toast } = useAdmin();
+  useEffect(() => {
+    apiRequest<string[]>("/api/v1/admin/manage/gifts/announce")
+      .then((ids) => setAnnounced(new Set(ids)))
+      .catch(() => undefined);
+  }, [version]);
+  const setAnnounce = async (id: string, on: boolean) => {
+    setAnnounced((s) => {
+      const n = new Set(s);
+      if (on) n.add(id);
+      else n.delete(id);
+      return n;
+    });
+    try {
+      await apiRequest(`/api/v1/admin/manage/gifts/${encodeURIComponent(id)}/announce`, { method: "PUT", body: { announce: on } });
+      toast(on ? "Server notification on for this gift" : "Server notification off");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Couldn't save");
+    }
+  };
 
   return (
     <>
@@ -67,6 +90,9 @@ export function GiftsLivePage() {
                     <Badge>{g.category}</Badge>
                     {g.animationFormat ? <Badge tone="info">{g.animationFormat}</Badge> : null}
                     {g.soundUrl ? <Badge tone="gold">MP3</Badge> : null}
+                  </div>
+                  <div className="mt-2">
+                    <Toggle checked={announced.has(g.id)} onChange={(v) => void setAnnounce(g.id, v)} label="Server notification" hint="Everyone sees a banner when someone sends it" />
                   </div>
                 </div>
                 <div className="flex shrink-0 flex-col gap-1.5">
