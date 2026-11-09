@@ -32,7 +32,8 @@ type Settings = {
   minDonation: number;
   updatedBy: string | null;
 };
-type Level = { level: number; expNeeded: number; capacity: number; deputyCap: number; adminCap: number };
+type Level = { level: number; expNeeded: number; capacity: number; deputyCap: number; adminCap: number; frame: string };
+const FRAMES = ["wood", "bronze", "silver", "gold", "ruby", "diamond", "royal"];
 type Perm = { role: "DEPUTY" | "ADMIN" | "MEMBER"; perm: string; allowed: boolean };
 type Row = { id: number; code: number; name: string; sign: string; level: number; exp: number; funds: number; status: string; members: number; leader: string; createdAt: string };
 
@@ -612,7 +613,7 @@ function SettingsCard({ s, onSave, busy, disabled }: { s: Settings; onSave: (b: 
 function LevelsCard({ levels, onSave, busy, disabled }: { levels: Level[]; onSave: (b: Level[]) => void; busy: boolean; disabled: boolean }) {
   const [rows, setRows] = useState(levels.map((l) => ({ ...l })));
   const edit = (i: number, k: keyof Level, v: string) => setRows((r) => r.map((x, j) => (j === i ? { ...x, [k]: Number(v.replace(/\D/g, "")) } : x)));
-  const add = () => setRows((r) => [...r, { level: r.length + 1, expNeeded: (r.at(-1)?.expNeeded ?? 0) + 100000, capacity: (r.at(-1)?.capacity ?? 20) + 5, deputyCap: r.at(-1)?.deputyCap ?? 1, adminCap: r.at(-1)?.adminCap ?? 2 }]);
+  const add = () => setRows((r) => [...r, { level: r.length + 1, expNeeded: (r.at(-1)?.expNeeded ?? 0) + 100000, capacity: (r.at(-1)?.capacity ?? 20) + 5, deputyCap: r.at(-1)?.deputyCap ?? 1, adminCap: r.at(-1)?.adminCap ?? 2, frame: r.at(-1)?.frame ?? "royal" }]);
   return (
     <Card
       className="mt-4"
@@ -632,6 +633,7 @@ function LevelsCard({ levels, onSave, busy, disabled }: { levels: Level[]; onSav
               <th className="py-2 text-left font-bold">Members</th>
               <th className="py-2 text-left font-bold">Deputies</th>
               <th className="py-2 text-left font-bold">Admins</th>
+              <th className="py-2 text-left font-bold">Frame</th>
               <th />
             </tr>
           </thead>
@@ -644,6 +646,15 @@ function LevelsCard({ levels, onSave, busy, disabled }: { levels: Level[]; onSav
                     <input className="field h-9 w-28 py-1" inputMode="numeric" disabled={disabled || (i === 0 && k === "expNeeded")} value={r[k]} onChange={(e) => edit(i, k, e.target.value)} aria-label={`${k} for level ${r.level}`} />
                   </td>
                 ))}
+                <td className="py-1 pr-2">
+                  <select className="field h-9 w-28 py-1" disabled={disabled} value={r.frame} onChange={(e) => setRows((x) => x.map((y, j) => (j === i ? { ...y, frame: e.target.value } : y)))} aria-label={`Frame for level ${r.level}`}>
+                    {FRAMES.map((fr) => (
+                      <option key={fr} value={fr}>
+                        {fr}
+                      </option>
+                    ))}
+                  </select>
+                </td>
                 <td>
                   {i === rows.length - 1 && i > 0 ? (
                     <Button size="sm" variant="danger" disabled={disabled} onClick={() => setRows((x) => x.slice(0, -1))} aria-label="Remove the last level">
@@ -655,7 +666,7 @@ function LevelsCard({ levels, onSave, busy, disabled }: { levels: Level[]; onSav
             ))}
           </tbody>
         </table>
-        <p className="mt-2 text-xs text-muted">Each level needs more EXP than the one before; Members can't go down. A Parivar is re-levelled when you save.</p>
+        <p className="mt-2 text-xs text-muted">Each level needs more EXP than the one before; Members can't go down. The frame is the border and sign badge a Parivar shows at that level. A Parivar is re-levelled when you save.</p>
         <div className="mt-3 flex justify-end">
           <Button variant="gold" busy={busy} disabled={disabled} onClick={() => window.confirm("Save the level table? Parivars are re-levelled straight away.") && onSave(rows)}>
             Save levels
