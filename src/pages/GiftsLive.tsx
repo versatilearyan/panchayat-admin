@@ -40,28 +40,21 @@ export function GiftsLivePage() {
       .then((ids) => setAnnounced(new Set(ids)))
       .catch(() => undefined);
   }, [version]);
-  // Fixed charm per gift (blank = 1 charm per 5 coins)
-  const [charms, setCharms] = useState<Record<string, number>>({});
+  // Per gift: how much Charm and how many lucky coins it triggers, each as a min and max (random in between)
+  type Trig = { charmMin: number | null; charmMax: number | null; coinMin: number | null; coinMax: number | null };
+  const [trigs, setTrigs] = useState<Record<string, Trig>>({});
   useEffect(() => {
-    apiRequest<Record<string, number>>("/api/v1/admin/manage/gifts/charm")
-      .then((m) => setCharms(m ?? {}))
+    apiRequest<Record<string, Trig>>("/api/v1/admin/manage/gifts/triggers")
+      .then((m) => setTrigs(m ?? {}))
       .catch(() => undefined);
   }, [version]);
-  const saveCharm = async (id: string, raw: string) => {
-    const v = raw.trim() === "" ? null : Math.max(0, Math.round(Number(raw)));
-    if (v !== null && !Number.isFinite(v)) return;
-    if ((charms[id] ?? null) === v) return;
+  const saveTrig = async (id: string, next: Trig) => {
     try {
-      await apiRequest(`/api/v1/admin/manage/gifts/${encodeURIComponent(id)}/charm`, { method: "PUT", body: { charm: v } });
-      setCharms((m) => {
-        const n = { ...m };
-        if (v === null) delete n[id];
-        else n[id] = v;
-        return n;
-      });
-      toast(v === null ? "Charm back to 1 per 5 coins" : `Charm set to ${v}`);
+      await apiRequest(`/api/v1/admin/manage/gifts/${encodeURIComponent(id)}/triggers`, { method: "PUT", body: next });
+      setTrigs((m) => ({ ...m, [id]: next }));
+      toast("Saved");
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Couldn't save");
+      toast(e instanceof Error ? e.message : "Couldn't save", "error");
     }
   };
   // Charm a gift earns a CP couple when the partners send it to each other (blank = 1 per 10 coins)
@@ -145,22 +138,7 @@ export function GiftsLivePage() {
                     {g.animationFormat ? <Badge tone="info">{g.animationFormat}</Badge> : null}
                     {g.soundUrl ? <Badge tone="gold">MP3</Badge> : null}
                   </div>
-                  <div className="mt-2 flex items-center gap-2">
-                    <label className="text-xs font-semibold text-muted" htmlFor={`charm-${g.id}`}>
-                      Charm
-                    </label>
-                    <input
-                      id={`charm-${g.id}`}
-                      key={`${g.id}-${charms[g.id] ?? ""}`}
-                      className="field h-8 w-24 py-1 text-sm"
-                      inputMode="numeric"
-                      placeholder={String(Math.floor(g.price / 5))}
-                      defaultValue={charms[g.id] ?? ""}
-                      onBlur={(e) => void saveCharm(g.id, e.target.value.replace(/\D/g, ""))}
-                      aria-label={`Charm for ${g.name}`}
-                    />
-                    <span className="text-[11px] text-muted">per gift</span>
-                  </div>
+                  <TriggerInputs key={`${g.id}-${JSON.stringify(trigs[g.id] ?? null)}`} gift={g} value={trigs[g.id]} onSave={(v) => void saveTrig(g.id, v)} />
                   <div className="mt-2 flex items-center gap-2">
                     <label className="text-xs font-semibold text-muted" htmlFor={`cpcharm-${g.id}`}>
                       CP Charm
@@ -375,5 +353,47 @@ function DeleteGift({ gift, onClose }: { gift: ServerGift; onClose: () => void }
     <ConfirmDialog open title={`Delete ${gift.name}?`} confirmLabel="Delete gift" busy={busy} error={error} onConfirm={go} onClose={onClose}>
       It's removed from the app and its files are deleted. Gifts already sent stay in people's history. To hide it for now, turn off “On sale” instead.
     </ConfirmDialog>
+  );
+}
+
+
+type TrigValue = { charmMin: number | null; charmMax: number | null; coinMin: number | null; coinMax: number | null };
+
+/** Charm and lucky coins a gift triggers: a minimum and a maximum, and a random number in between each time. */
+function TriggerInputs({ gift, value, onSave }: { gift: ServerGift; value?: TrigValue; onSave: (v: TrigValue) => void }) {
+  const [f, setF] = useState({ cMin: value?.charmMin ?? "", cMax: value?.charmMax ?? "", kMin: value?.coinMin ?? "", kMax: value?.coinMax ?? "" } as Record<"cMin" | "cMax" | "kMin" | "kMax", string | number>);
+  const num = (v: string | number) => (String(v).trim() === "" ? null : Math.max(0, Math.round(Number(v))));
+  const commit = () => {
+    const next = { charmMin: num(f.cMin), charmMax: num(f.cMax), coinMin: num(f.kMin), coinMax: num(f.kMax) };
+    const same = next.charmMin === (value?.charmMin ?? null) && next.charmMax === (value?.charmMax ?? null) && next.coinMin === (value?.coinMin ?? null) && next.coinMax === (value?.coinMax ?? null);
+    if (!same) onSave(next);
+  };
+  const box = (k: "cMin" | "cMax" | "kMin" | "kMax", ph: string, label: string) => (
+    <input
+      className="field h-8 w-[84px] py-1 text-sm"
+      inputMode="numeric"
+      placeholder={ph}
+      value={f[k]}
+      onChange={(e) => setF((x) => ({ ...x, [k]: e.target.value.replace(/\D/g, "") }))}
+      onBlur={commit}
+      aria-label={`${label} for ${gift.name}`}
+    />
+  );
+  return (
+    <div className="mt-2 space-y-1.5">
+      <div className="flex items-center gap-1.5">
+        <span className="w-[70px] text-xs font-semibold text-muted">Lucky coins</span>
+        {box("kMin", "min", "Lucky coins minimum")}
+        <span className="text-muted">–</span>
+        {box("kMax", "max", "Lucky coins maximum")}
+      </div>
+      <div className="flex items-center gap-1.5">
+        <span className="w-[70px] text-xs font-semibold text-muted">Charm</span>
+        {box("cMin", `${Math.floor(gift.price / 5)}`, "Charm minimum")}
+        <span className="text-muted">–</span>
+        {box("cMax", `${Math.floor(gift.price / 5)}`, "Charm maximum")}
+      </div>
+      <p className="text-[11px] text-muted">A random number from min to max each time it is sent. Leave empty for the default.</p>
+    </div>
   );
 }
