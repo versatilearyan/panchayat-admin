@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ComponentType } from "react";
-import { Activity, BarChart3, Coins, CreditCard, Dice5, FileClock, ScrollText, Flag, Gift, IndianRupee, Mail, Landmark, LayoutDashboard, Lock, LogOut, MessagesSquare, Settings, ShoppingBag, UserCog, Users, Wallet, Crown, Gem, Sparkles, Eye, ListChecks } from "lucide-react";
+import { Activity, BarChart3, Coins, CreditCard, Dice5, FileClock, ScrollText, Flag, Gift, IndianRupee, Mail, Landmark, LayoutDashboard, Lock, LogOut, MessagesSquare, Settings, ShoppingBag, UserCog, Users, Wallet, Crown, Gem, UsersRound, Sparkles, Eye, ListChecks } from "lucide-react";
 import { adminApi } from "./api";
 import { getSession, setSession, type AdminSession } from "./api/session";
 import { BACKEND_ENABLED } from "./config/api";
@@ -27,6 +27,7 @@ import { VipPage } from "./pages/Vip";
 import { VipCosmeticsPage } from "./pages/VipCosmetics";
 import { VipPlansPage } from "./pages/VipPlans";
 import { CpRingsPage } from "./pages/CpRings";
+import { ParivarPage } from "./pages/Parivar";
 import { StaffPage } from "./pages/Staff";
 import { SettingsPage } from "./pages/Settings";
 import { SarpanchPage } from "./pages/Sarpanch";
@@ -92,6 +93,7 @@ const NAV: { page: Page; label: string; icon: typeof Users; child?: boolean }[] 
   { page: "visitorPlans", label: "Visitor log", icon: Eye, child: true },
   { page: "dailyTasks", label: "Daily tasks", icon: ListChecks },
   { page: "sarpanch", label: "Sarpanch", icon: Landmark },
+  { page: "parivar", label: "Parivar", icon: UsersRound },
   { page: "activity", label: "Activity log", icon: Activity },
   { page: "staff", label: "Staff", icon: UserCog },
   { page: "settings", label: "App settings", icon: Settings },
@@ -121,6 +123,7 @@ const PAGE_VIEW: Record<Page, ComponentType> = {
   visitorPlans: VisitorPlansPage,
   dailyTasks: DailyTasksPage,
   sarpanch: SarpanchPage,
+  parivar: ParivarPage,
   activity: ActivityPage,
   staff: StaffPage,
   settings: SettingsPage,
