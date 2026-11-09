@@ -39,6 +39,7 @@ if [ "$CODE" != 200 ]; then
   fail "The panel answered $CODE after the switch, so the old files are back."
 fi
 
-ls -1dt "${ADMIN_DIR}".before-* 2>/dev/null | tail -n +$((KEEP + 1)) | xargs -r rm -rf
-ls -1dt "${ADMIN_DIR}".failed-* 2>/dev/null | tail -n +2 | xargs -r rm -rf
+# Tidying up must never fail a deploy that worked (ls exits 2 when nothing matches)
+{ ls -1dt "${ADMIN_DIR}".before-* 2>/dev/null || true; } | tail -n +$((KEEP + 1)) | xargs -r rm -rf || true
+{ ls -1dt "${ADMIN_DIR}".failed-* 2>/dev/null || true; } | tail -n +2 | xargs -r rm -rf || true
 say "Admin panel deployed (previous files kept as $PREVIOUS)"
