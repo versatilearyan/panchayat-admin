@@ -23,13 +23,6 @@ export function GiftsLivePage() {
   const list = useList(() => giftCatalogService.list(), version);
   const [dialog, setDialog] = useState<Dialog>(null);
   const { cats, reload: reloadCats } = useGiftCategories();
-  // Lucky coins (random coins to the receiver of a gift): one switch, off by default
-  const [lucky, setLucky] = useState<boolean | null>(null);
-  useEffect(() => {
-    apiRequest<{ enabled: boolean }>("/api/v1/admin/manage/gifts/lucky")
-      .then((d) => setLucky(d.enabled))
-      .catch(() => undefined);
-  }, []);
   const [catsOpen, setCatsOpen] = useState(false);
   const [cat, setCat] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -110,19 +103,6 @@ export function GiftsLivePage() {
         sub="Live from the server. Add gifts with a picture, an SVGA or MP4 animation and an MP3 sound, set prices, and choose what's on sale."
         right={
           <span className="flex gap-2">
-            {lucky !== null ? (
-              <span className="flex items-center rounded-xl border border-line px-3">
-                <Toggle
-                  checked={lucky}
-                  onChange={(v) =>
-                    void apiRequest("/api/v1/admin/manage/gifts/lucky", { method: "PUT", body: { enabled: v } })
-                      .then(() => (setLucky(v), toast(v ? "Lucky coins are ON" : "Lucky coins are OFF")))
-                      .catch((e) => toast(e instanceof Error ? e.message : "Couldn't save", "error"))
-                  }
-                  label="Lucky coins"
-                />
-              </span>
-            ) : null}
             <Button onClick={() => setCatsOpen(true)}>Categories</Button>
             <Button variant="primary" onClick={() => setDialog({ kind: "add" })}>
               <Plus className="h-4 w-4" /> Add gift
@@ -130,6 +110,7 @@ export function GiftsLivePage() {
           </span>
         }
       />
+      <LuckyCard />
       {list.error ? <ListProblem error={list.error} onRetry={list.retry} /> : null}
       <Card
         title={list.data ? `${gifts.length} gifts · ${gifts.filter((g) => g.active).length} on sale` : "Gifts"}
@@ -415,5 +396,111 @@ function TriggerInputs({ gift, value, onSave }: { gift: ServerGift; value?: Trig
       </div>
       <p className="text-[11px] text-muted">A random number from min to max each time it is sent. Leave empty for the default.</p>
     </div>
+  );
+}
+
+
+type Lucky = { enabled: boolean; chancePercent: number; defaultMin: number; defaultMax: number; highChance: number; middleChance: number; minGiftCoins: number; dailyCap: number; pairDailyLimit: number };
+type LuckyLog = { todayCount: number; todayCoins: number; recent: { id: number; receiver?: string; receiverId: number; senderId?: number; giftId?: string; count: number; giftCoins: number; amount: number; createdAt: string }[] };
+
+const LUCKY_FIELDS: { key: keyof Lucky; label: string; hint?: string }[] = [
+  { key: "chancePercent", label: "Chance a gift is lucky (%)", hint: "100 = every gift can be lucky." },
+  { key: "defaultMin", label: "Least lucky coins", hint: "Used when a gift has no range of its own." },
+  { key: "defaultMax", label: "Most lucky coins" },
+  { key: "highChance", label: "Big win chance (%)", hint: "Top third of the range." },
+  { key: "middleChance", label: "Middle win chance (%)", hint: "Middle third; the rest are small wins." },
+  { key: "minGiftCoins", label: "Gift must cost at least (coins)", hint: "Smaller gifts never pay lucky coins. 0 = all gifts." },
+  { key: "dailyCap", label: "Most per person per day (coins)", hint: "Stops coin farming between two accounts. 0 = no limit." },
+  { key: "pairDailyLimit", label: "Lucky wins per sender and receiver per day", hint: "0 = no limit." },
+];
+
+/** Lucky coins: random coins for the person who receives a gift. Every rule is set here. */
+function LuckyCard() {
+  const { toast } = useAdmin();
+  const [v, setV] = useState<Lucky | null>(null);
+  const [log, setLog] = useState<LuckyLog | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+  const load = () => {
+    apiRequest<Lucky>("/api/v1/admin/manage/gifts/lucky").then(setV).catch(() => undefined);
+    apiRequest<LuckyLog>("/api/v1/admin/manage/gifts/lucky/log").then(setLog).catch(() => undefined);
+  };
+  useEffect(load, []);
+  if (!v) return null;
+  const save = async () => {
+    setBusy(true);
+    try {
+      setV(await apiRequest<Lucky>("/api/v1/admin/manage/gifts/lucky", { method: "PUT", body: v }));
+      toast("Saved");
+      load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Couldn't save", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card
+      title="Lucky coins on gifts"
+      className="mb-4"
+      action={
+        <span className="flex items-center gap-3">
+          <Toggle checked={v.enabled} onChange={(on) => setV({ ...v, enabled: on })} label={v.enabled ? "On" : "Off"} />
+          <Button size="sm" onClick={() => setOpen((o) => !o)}>
+            {open ? "Hide rules" : "Rules"}
+          </Button>
+        </span>
+      }
+    >
+      <div className="p-4">
+        <p className="text-sm text-muted">
+          A random number of coins goes to the person who receives a gift, on top of their share. Today: <b>{fmtCoins(log?.todayCount ?? 0)}</b> payouts, <b>{fmtCoins(log?.todayCoins ?? 0)}</b> coins. Press Save after changing the switch or any rule.
+        </p>
+        {open ? (
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {LUCKY_FIELDS.map((f) => (
+              <div key={f.key}>
+                <label className="label" htmlFor={`lk-${f.key}`}>
+                  {f.label}
+                </label>
+                <input id={`lk-${f.key}`} className="field h-10 w-44" inputMode="decimal" value={String(v[f.key])} onChange={(e) => setV({ ...v, [f.key]: e.target.value.replace(/[^\d.]/g, "") as unknown as number })} />
+                {f.hint ? <p className="mt-1 text-xs text-muted">{f.hint}</p> : null}
+              </div>
+            ))}
+          </div>
+        ) : null}
+        <div className="mt-4 flex justify-end">
+          <Button variant="gold" busy={busy} onClick={save}>
+            Save
+          </Button>
+        </div>
+        {log?.recent.length ? (
+          <div className="scroll-thin mt-4 max-h-64 overflow-auto rounded-xl border border-line">
+            <table className="w-full text-left text-xs">
+              <thead className="sticky top-0 bg-surface text-[11px] tracking-wide text-muted uppercase">
+                <tr>
+                  <th className="px-3 py-2">Receiver</th>
+                  <th className="px-3 py-2">Gift</th>
+                  <th className="px-3 py-2">Lucky coins</th>
+                  <th className="px-3 py-2">When</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {log.recent.map((r) => (
+                  <tr key={r.id}>
+                    <td className="px-3 py-1.5">{r.receiver ?? r.receiverId}</td>
+                    <td className="px-3 py-1.5">
+                      {r.count}× {r.giftId} ({fmtCoins(r.giftCoins)})
+                    </td>
+                    <td className="px-3 py-1.5 font-bold text-gold">{fmtCoins(r.amount)}</td>
+                    <td className="px-3 py-1.5">{new Date(r.createdAt).toLocaleString("en-IN")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+      </div>
+    </Card>
   );
 }

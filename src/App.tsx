@@ -8,7 +8,7 @@ import { AdminProvider, PAGE_PERMISSION, useAdmin, type Page } from "./context";
 import { Login } from "./pages/Login";
 import { Overview } from "./pages/Overview";
 import { UsersPage } from "./pages/Users";
-import { RoomsPage } from "./pages/Rooms";
+import { RoomsLivePage as RoomsPage } from "./pages/RoomsLive";
 import { ReportsPage } from "./pages/Reports";
 import { ActivityPage } from "./pages/Activity";
 import { GiftsPage } from "./pages/Gifts";
