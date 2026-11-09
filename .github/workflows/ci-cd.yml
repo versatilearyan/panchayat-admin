@@ -62,7 +62,8 @@ jobs:
           HOST: ${{ secrets.DEPLOY_HOST }}
           USER_NAME: ${{ secrets.DEPLOY_USER }}
           PORT: ${{ secrets.DEPLOY_PORT || '22' }}
-          ADMIN_DIR: ${{ vars.ADMIN_DIR || '/opt/panchayat-deploy/admin' }}
+          # The folder nginx serves (its root): the project folder next to it holds source and node_modules, which stay untouched
+          ADMIN_DIR: ${{ vars.ADMIN_DIR || '/opt/panchayat-deploy/admin/dist' }}
           ADMIN_HOST: ${{ vars.ADMIN_HOSTNAME || 'admin.panchayat.world' }}
         run: |
           set -euo pipefail
