@@ -9,6 +9,7 @@ import { useAdmin } from "../context";
 import { apiRequest } from "../lib/api";
 import { Badge, Button, Card, Chips, Empty, ErrorNote, Loading, PageHeader, Toggle, fmtCoins } from "../components/ui";
 import { NeedsBackend } from "../components/WalletParts";
+import { ConfigTable } from "../components/ConfigTable";
 
 const base = "/api/v1/admin/parivar";
 
@@ -44,8 +45,26 @@ const PERM_LABEL: Record<string, string> = {
   APPOINT_ADMIN: "Appoint Admin",
   MANAGE_TREASURY: "Manage treasury",
   MANAGE_SETTINGS: "Manage Parivar settings",
+  USE_STEAL: "Use Chori (steal)",
+  MANAGE_STEAL: "Switch Chori on/off for members",
+  MANAGE_BARRIER: "Switch on Kavach (barrier)",
+  MANAGE_GACHA: "Spend funds / cards on Gacha",
+  MANAGE_CHESTS: "Buy and send chests",
+  MANAGE_VOICE: "Start the Parivar voice room",
 };
 const ROLES: Perm["role"][] = ["DEPUTY", "ADMIN", "MEMBER"];
+type Sec = "general" | "chori" | "kavach" | "gacha" | "chests" | "shop" | "tasks" | "parivars" | "logs";
+const SECS: { value: Sec; label: string }[] = [
+  { value: "general", label: "General, levels, roles" },
+  { value: "chori", label: "Chori and switches" },
+  { value: "kavach", label: "Kavach" },
+  { value: "gacha", label: "Gacha" },
+  { value: "chests", label: "Chests" },
+  { value: "shop", label: "Shop and cheer" },
+  { value: "tasks", label: "Tasks and prizes" },
+  { value: "parivars", label: "Parivars" },
+  { value: "logs", label: "Logs" },
+];
 
 export function ParivarPage() {
   if (!BACKEND_ENABLED) return <NeedsBackend what="Parivar management" />;
@@ -63,6 +82,9 @@ function Live() {
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const canSave = can("settings.edit");
+  const [sec, setSec] = useState<Sec>("general");
+  const [machine, setMachine] = useState(1);
+  const [chestId, setChestId] = useState(1);
 
   const load = useCallback(async () => {
     try {
@@ -109,6 +131,10 @@ function Live() {
       {!canSave ? <p className="mb-3 rounded-xl bg-[#3a2a14] px-3.5 py-2.5 text-sm text-[#ffd9a0]">Only a Super Admin can save changes here. You can look at everything.</p> : null}
       {error ? <ErrorNote>{error}</ErrorNote> : null}
 
+      <Chips label="Section" value={sec} onChange={setSec} options={SECS} />
+
+      {sec === "general" ? (
+        <>
       <SettingsCard s={s} busy={busy === "settings"} disabled={!canSave} onSave={(body) => run("settings", () => apiRequest(`${base}/settings`, { method: "PUT", body }), "Settings saved")} />
       <LevelsCard levels={levels} busy={busy === "levels"} disabled={!canSave} onSave={(body) => run("levels", () => apiRequest(`${base}/levels`, { method: "PUT", body }), "Levels saved")} />
 
@@ -151,6 +177,213 @@ function Live() {
         </div>
       </Card>
 
+        </>
+      ) : null}
+
+      {sec === "chori" ? <ExtraSettings canSave={canSave} /> : null}
+
+      {sec === "kavach" ? (
+        <ConfigTable
+          section="barriers"
+          title="Kavach types"
+          canSave={canSave}
+          note="Strength is the chance (%) that this Kavach stops a Chori attempt. Price is paid from the Parivar treasury unless the Parivar already owns one."
+          cols={[
+            { key: "name", label: "Name", type: "text" },
+            { key: "imageUrl", label: "Image URL", type: "text", width: "180px" },
+            { key: "strength", label: "Strength %", type: "int" },
+            { key: "durationMinutes", label: "Lasts (min)", type: "int" },
+            { key: "priceFunds", label: "Price (funds)", type: "int" },
+            { key: "cooldownMinutes", label: "Cooldown (min)", type: "int" },
+            { key: "dailyLimit", label: "Per day", type: "int" },
+            { key: "minLevel", label: "Min level", type: "int" },
+            { key: "sortOrder", label: "Order", type: "int" },
+            { key: "active", label: "On", type: "bool" },
+          ]}
+          blank={{ name: "New Kavach", imageUrl: "", strength: 50, durationMinutes: 720, priceFunds: 1000, cooldownMinutes: 0, dailyLimit: 2, minLevel: 1, sortOrder: 9, active: true }}
+        />
+      ) : null}
+
+      {sec === "gacha" ? (
+        <>
+          <ConfigTable
+            section="gacha-machines"
+            title="Gacha machines"
+            canSave={canSave}
+            note="Each roll uses a free spin, else a Gacha Card from the Parivar, else the price from the treasury (plus the coin fee from the player)."
+            cols={[
+              { key: "name", label: "Name", type: "text" },
+              { key: "tier", label: "Tier", type: "text", width: "100px" },
+              { key: "imageUrl", label: "Image URL", type: "text", width: "170px" },
+              { key: "animationUrl", label: "Animation URL", type: "text", width: "170px" },
+              { key: "priceFunds", label: "Price (funds)", type: "int" },
+              { key: "serviceFeeCoins", label: "Fee (coins)", type: "int" },
+              { key: "freePerDay", label: "Free/day", type: "int" },
+              { key: "minLevel", label: "Min level", type: "int" },
+              { key: "sortOrder", label: "Order", type: "int" },
+              { key: "active", label: "On", type: "bool" },
+            ]}
+            blank={{ name: "New machine", tier: "CUSTOM", imageUrl: "", animationUrl: "", priceFunds: 1000, serviceFeeCoins: 0, freePerDay: 0, minLevel: 1, sortOrder: 9, active: true }}
+          />
+          <Card className="mt-4" title="Rewards of machine">
+            <div className="px-4 py-3">
+              <label className="label" htmlFor="gm">
+                Machine ID
+              </label>
+              <input id="gm" className="field h-9 w-28 py-1" inputMode="numeric" value={machine} onChange={(e) => setMachine(Number(e.target.value.replace(/\D/g, "")) || 1)} />
+              <p className="mt-1 text-xs text-muted">Weight is the share of the chance: a reward with weight 10 among a total of 1000 is won 1% of the time. The app shows these chances to players.</p>
+            </div>
+          </Card>
+          <ConfigTable
+            key={machine}
+            section="gacha-rewards"
+            parent={{ key: "machineId", value: machine }}
+            title="Gacha rewards"
+            canSave={canSave}
+            deletable
+            cols={[
+              { key: "kind", label: "Kind", type: "enum", options: ["COINS", "FUNDS", "CHARM", "CHEST", "CARD", "BARRIER"] },
+              { key: "ref", label: "Item ID", type: "int", hint: "For CHEST / CARD (machine) / BARRIER: the ID of that item" },
+              { key: "amount", label: "Amount", type: "int" },
+              { key: "weight", label: "Weight", type: "int" },
+              { key: "rarity", label: "Rarity", type: "enum", options: ["COMMON", "RARE", "EPIC", "LEGENDARY"] },
+              { key: "label", label: "Label", type: "text" },
+              { key: "imageUrl", label: "Image URL", type: "text", width: "160px" },
+              { key: "active", label: "On", type: "bool" },
+            ]}
+            blank={{ kind: "COINS", ref: 0, amount: 100, weight: 10, rarity: "COMMON", label: "100 coins", imageUrl: "", active: true }}
+          />
+        </>
+      ) : null}
+
+      {sec === "chests" ? (
+        <>
+          <ConfigTable
+            section="chests"
+            title="Chests"
+            canSave={canSave}
+            note="Pieces is how many members can claim one piece each. Price is paid from the treasury unless the Parivar already owns one."
+            cols={[
+              { key: "name", label: "Name", type: "text" },
+              { key: "imageUrl", label: "Image URL", type: "text", width: "180px" },
+              { key: "priceFunds", label: "Price (funds)", type: "int" },
+              { key: "pieces", label: "Pieces", type: "int" },
+              { key: "minLevel", label: "Min level", type: "int" },
+              { key: "sortOrder", label: "Order", type: "int" },
+              { key: "active", label: "On", type: "bool" },
+            ]}
+            blank={{ name: "New Chest", imageUrl: "", priceFunds: 2000, pieces: 10, minLevel: 1, sortOrder: 9, active: true }}
+          />
+          <Card className="mt-4" title="Rewards of chest">
+            <div className="px-4 py-3">
+              <label className="label" htmlFor="cm">
+                Chest ID
+              </label>
+              <input id="cm" className="field h-9 w-28 py-1" inputMode="numeric" value={chestId} onChange={(e) => setChestId(Number(e.target.value.replace(/\D/g, "")) || 1)} />
+            </div>
+          </Card>
+          <ConfigTable
+            key={chestId}
+            section="chest-rewards"
+            parent={{ key: "chestId", value: chestId }}
+            title="Chest rewards"
+            canSave={canSave}
+            deletable
+            cols={[
+              { key: "kind", label: "Kind", type: "enum", options: ["COINS", "FUNDS", "CHARM", "CHEST", "CARD", "BARRIER"] },
+              { key: "ref", label: "Item ID", type: "int" },
+              { key: "amount", label: "Amount", type: "int" },
+              { key: "weight", label: "Weight", type: "int" },
+              { key: "label", label: "Label", type: "text" },
+              { key: "active", label: "On", type: "bool" },
+            ]}
+            blank={{ kind: "COINS", ref: 0, amount: 100, weight: 10, label: "100 coins", active: true }}
+          />
+        </>
+      ) : null}
+
+      {sec === "shop" ? (
+        <>
+          <ConfigTable
+            section="shop"
+            title="Parivar shop"
+            canSave={canSave}
+            note="Items go into the Parivar inventory. Price in funds is paid by members allowed to manage the treasury; price in coins by any member from their own wallet (0 = not for sale that way). Kind GACHA_CARD uses the machine ID as Item ID."
+            cols={[
+              { key: "name", label: "Name", type: "text" },
+              { key: "imageUrl", label: "Image URL", type: "text", width: "160px" },
+              { key: "kind", label: "Kind", type: "enum", options: ["GACHA_CARD", "CHEST", "BARRIER"] },
+              { key: "ref", label: "Item ID", type: "int" },
+              { key: "qty", label: "Qty", type: "int" },
+              { key: "priceFunds", label: "Funds", type: "int" },
+              { key: "priceCoins", label: "Coins", type: "int" },
+              { key: "dailyLimit", label: "Per day", type: "int" },
+              { key: "minLevel", label: "Min level", type: "int" },
+              { key: "sortOrder", label: "Order", type: "int" },
+              { key: "active", label: "On", type: "bool" },
+            ]}
+            blank={{ name: "New item", imageUrl: "", kind: "CHEST", ref: 1, qty: 1, priceFunds: 1000, priceCoins: 0, dailyLimit: 0, minLevel: 1, sortOrder: 99, active: true }}
+          />
+          <ConfigTable
+            section="cheer"
+            title="Cheer"
+            canSave={canSave}
+            note="Cheer costs coins from the player's wallet and gives the Parivar EXP (and funds if set)."
+            cols={[
+              { key: "name", label: "Name", type: "text" },
+              { key: "times", label: "Times", type: "int" },
+              { key: "coinsCost", label: "Cost (coins)", type: "int" },
+              { key: "expGain", label: "EXP", type: "int" },
+              { key: "fundsGain", label: "Funds", type: "int" },
+              { key: "dailyLimit", label: "Per day", type: "int" },
+              { key: "sortOrder", label: "Order", type: "int" },
+              { key: "active", label: "On", type: "bool" },
+            ]}
+            blank={{ name: "Cheer x5", times: 5, coinsCost: 500, expGain: 55, fundsGain: 0, dailyLimit: 20, sortOrder: 9, active: true }}
+          />
+        </>
+      ) : null}
+
+      {sec === "tasks" ? (
+        <>
+          <ConfigTable
+            section="tasks"
+            title="Daily and weekly tasks"
+            canSave={canSave}
+            deletable
+            note="The metric is what is counted for each member in that day or week."
+            cols={[
+              { key: "title", label: "Title", type: "text", width: "220px" },
+              { key: "period", label: "Period", type: "enum", options: ["DAILY", "WEEKLY"] },
+              { key: "metric", label: "Counts", type: "enum", options: ["GIFT_EXP", "DONATED_COINS", "CHEERS", "CHECKINS", "ACTIVITY_EXP", "GACHA_ROLLS"] },
+              { key: "target", label: "Target", type: "int" },
+              { key: "rewardKind", label: "Reward", type: "enum", options: ["EXP", "FUNDS", "COINS", "CHARM"] },
+              { key: "rewardAmount", label: "Amount", type: "int" },
+              { key: "sortOrder", label: "Order", type: "int" },
+              { key: "active", label: "On", type: "bool" },
+            ]}
+            blank={{ title: "New task", period: "DAILY", metric: "CHEERS", target: 1, rewardKind: "EXP", rewardAmount: 10, sortOrder: 9, active: true }}
+          />
+          <ConfigTable
+            section="rank-rewards"
+            title="Weekly ranking prizes"
+            canSave={canSave}
+            deletable
+            note="Funds paid to the Parivars that finish the week at these places (switch this on under Chori and switches)."
+            cols={[
+              { key: "rankFrom", label: "From rank", type: "int" },
+              { key: "rankTo", label: "To rank", type: "int" },
+              { key: "funds", label: "Funds", type: "int" },
+              { key: "active", label: "On", type: "bool" },
+            ]}
+            blank={{ rankFrom: 11, rankTo: 20, funds: 1000, active: true }}
+          />
+        </>
+      ) : null}
+
+      {sec === "parivars" ? (
+        <>
+          <Stats />
       <Card
         className="mt-4"
         title={rows ? `${rows.length} Parivars` : "Parivars"}
@@ -227,6 +460,12 @@ function Live() {
         )}
       </Card>
 
+        </>
+      ) : null}
+
+      {sec === "logs" ? (
+        <>
+          <Logs />
       <Card title="Change log" className="mt-4">
         {!log?.length ? (
           <Empty>No changes yet.</Empty>
@@ -241,6 +480,8 @@ function Live() {
           </ul>
         )}
       </Card>
+        </>
+      ) : null}
     </>
   );
 }
@@ -421,6 +662,182 @@ function LevelsCard({ levels, onSave, busy, disabled }: { levels: Level[]; onSav
           </Button>
         </div>
       </div>
+    </Card>
+  );
+}
+
+type Extra = Record<string, number | boolean | string>;
+const EXTRA_FIELDS: { key: string; label: string; type: "bool" | "int" | "enum"; options?: string[]; group: string; hint?: string }[] = [
+  { key: "stealEnabled", label: "Chori is on", type: "bool", group: "Chori (steal)", hint: "Off by default. Even when on, each Parivar's Mukhiya decides if members may use it." },
+  { key: "stealMinLevel", label: "Parivar level needed", type: "int", group: "Chori (steal)" },
+  { key: "stealDailyAttempts", label: "Attempts per Parivar per day", type: "int", group: "Chori (steal)" },
+  { key: "stealCooldownMinutes", label: "Cooldown (minutes)", type: "int", group: "Chori (steal)" },
+  { key: "stealSuccessPercent", label: "Success chance %", type: "int", group: "Chori (steal)" },
+  { key: "stealTakePercent", label: "Share taken from the treasury %", type: "int", group: "Chori (steal)" },
+  { key: "stealMaxTake", label: "Most that can be taken", type: "int", group: "Chori (steal)" },
+  { key: "stealFailPenalty", label: "Cost of a failed attempt (funds)", type: "int", group: "Chori (steal)" },
+  { key: "stealMinTargetFunds", label: "Target needs at least (funds)", type: "int", group: "Chori (steal)" },
+  { key: "cheerEnabled", label: "Cheer", type: "bool", group: "Feature switches" },
+  { key: "gachaEnabled", label: "Gacha", type: "bool", group: "Feature switches" },
+  { key: "shopEnabled", label: "Parivar shop", type: "bool", group: "Feature switches" },
+  { key: "tasksEnabled", label: "Tasks", type: "bool", group: "Feature switches" },
+  { key: "chatEnabled", label: "Family chat", type: "bool", group: "Feature switches" },
+  { key: "voiceEnabled", label: "Parivar voice room", type: "bool", group: "Feature switches" },
+  { key: "rankRewardsEnabled", label: "Weekly ranking prizes", type: "bool", group: "Feature switches" },
+  { key: "voiceMinLevel", label: "Voice room unlocks at level", type: "int", group: "Limits" },
+  { key: "chestExpiryHours", label: "Chest stays open (hours)", type: "int", group: "Limits" },
+  { key: "chestExpiryPolicy", label: "Unclaimed chest pieces", type: "enum", options: ["NONE", "REFUND_FUNDS"], group: "Limits", hint: "REFUND_FUNDS: their share of the price goes back to the treasury." },
+  { key: "checkinExp", label: "Daily check-in EXP", type: "int", group: "Limits" },
+];
+
+function ExtraSettings({ canSave }: { canSave: boolean }) {
+  const { toast } = useAdmin();
+  const [e, setE] = useState<Extra | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    apiRequest<Extra>(`${base}/settings/extra`)
+      .then(setE)
+      .catch(() => undefined);
+  }, []);
+  if (!e) return <Loading />;
+  const groups = Array.from(new Set(EXTRA_FIELDS.map((f) => f.group)));
+  const save = async () => {
+    if (!window.confirm("Save these settings? They apply to every Parivar at once.")) return;
+    setBusy(true);
+    try {
+      setE(await apiRequest<Extra>(`${base}/settings/extra`, { method: "PUT", body: e }));
+      toast("Saved");
+    } catch (er) {
+      toast(er instanceof Error ? er.message : "Couldn't save", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      {groups.map((g) => (
+        <Card key={g} title={g} className="mt-4">
+          <div className="grid gap-4 p-4 sm:grid-cols-2">
+            {EXTRA_FIELDS.filter((f) => f.group === g).map((f) =>
+              f.type === "bool" ? (
+                <Toggle key={f.key} checked={Boolean(e[f.key])} disabled={!canSave} onChange={(v) => setE({ ...e, [f.key]: v })} label={f.label} hint={f.hint} />
+              ) : (
+                <div key={f.key}>
+                  <label className="label" htmlFor={f.key}>
+                    {f.label}
+                  </label>
+                  {f.type === "enum" ? (
+                    <select id={f.key} className="field h-10" disabled={!canSave} value={String(e[f.key])} onChange={(ev) => setE({ ...e, [f.key]: ev.target.value })}>
+                      {f.options?.map((o) => (
+                        <option key={o}>{o}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input id={f.key} className="field h-10 w-40" inputMode="numeric" disabled={!canSave} value={String(e[f.key] ?? "")} onChange={(ev) => setE({ ...e, [f.key]: ev.target.value.replace(/[^\d.]/g, "") })} />
+                  )}
+                  {f.hint ? <p className="mt-1 text-xs text-muted">{f.hint}</p> : null}
+                </div>
+              ),
+            )}
+          </div>
+        </Card>
+      ))}
+      <div className="mt-4 flex justify-end">
+        <Button variant="gold" busy={busy} disabled={!canSave} onClick={save}>
+          Save settings
+        </Button>
+      </div>
+    </>
+  );
+}
+
+function Stats() {
+  const [s, setS] = useState<Record<string, number> | null>(null);
+  useEffect(() => {
+    apiRequest<Record<string, number>>(`${base}/stats`)
+      .then(setS)
+      .catch(() => undefined);
+  }, []);
+  if (!s) return null;
+  const items: [string, string][] = [
+    ["parivars", "Parivars"],
+    ["members", "Members"],
+    ["totalFunds", "Funds in treasuries"],
+    ["donatedToday", "Donated today"],
+    ["choriToday", "Chori today"],
+    ["gachaToday", "Gacha rolls today"],
+    ["chestsOpen", "Chests open"],
+    ["kavachOn", "Kavach on now"],
+  ];
+  return (
+    <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+      {items.map(([k, label]) => (
+        <div key={k} className="rounded-2xl border border-line bg-surface/60 px-4 py-3.5">
+          <p className="text-[11px] font-bold tracking-wide text-muted uppercase">{label}</p>
+          <p className="mt-1 font-display text-2xl font-bold tabular-nums">{fmtCoins(s[k] ?? 0)}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Logs() {
+  const [kind, setKind] = useState<"funds" | "steal" | "gacha" | "chests">("funds");
+  const [rows, setRows] = useState<Record<string, unknown>[] | null>(null);
+  useEffect(() => {
+    setRows(null);
+    apiRequest<Record<string, unknown>[]>(`${base}/logs/${kind}`)
+      .then(setRows)
+      .catch(() => setRows([]));
+  }, [kind]);
+  const cols = rows && rows[0] ? Object.keys(rows[0]) : [];
+  return (
+    <Card
+      title="Transactions"
+      action={
+        <Chips
+          label="Log"
+          value={kind}
+          onChange={setKind}
+          options={[
+            { value: "funds", label: "Treasury" },
+            { value: "steal", label: "Chori" },
+            { value: "gacha", label: "Gacha" },
+            { value: "chests", label: "Chests" },
+          ]}
+        />
+      }
+    >
+      {!rows ? (
+        <Loading />
+      ) : !rows.length ? (
+        <Empty>Nothing yet.</Empty>
+      ) : (
+        <div className="scroll-thin overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="text-[11px] tracking-wide text-muted uppercase">
+              <tr className="border-b border-line">
+                {cols.map((c) => (
+                  <th key={c} className="px-3 py-2 font-bold">
+                    {c}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {rows.map((r, i) => (
+                <tr key={i}>
+                  {cols.map((c) => (
+                    <td key={c} className="px-3 py-1.5 whitespace-nowrap">
+                      {c === "createdAt" ? new Date(String(r[c])).toLocaleString("en-IN") : String(r[c] ?? "")}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </Card>
   );
 }
