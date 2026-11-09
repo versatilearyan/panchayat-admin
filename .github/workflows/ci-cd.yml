@@ -1,0 +1,78 @@
+name: CI and deploy (admin panel)
+
+# Every push and pull request is type-checked and built. A push to main (or a manual run) then deploys.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["**.md"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      # "npm run build" is tsc --noEmit && vite build, using the committed .env.production
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: admin-dist
+          path: dist
+          retention-days: 3
+
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    concurrency:
+      group: production-deploy-admin
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: admin-dist
+          path: dist
+
+      - name: Set up SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Upload and switch over
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER_NAME: ${{ secrets.DEPLOY_USER }}
+          PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+          ADMIN_DIR: ${{ vars.ADMIN_DIR || '/opt/panchayat-deploy/admin' }}
+          ADMIN_HOST: ${{ vars.ADMIN_HOSTNAME || 'admin.panchayat.world' }}
+        run: |
+          set -euo pipefail
+          [ -f dist/index.html ] || { echo "The build has no dist/index.html."; exit 1; }
+          SSH="ssh -i $HOME/.ssh/deploy_key -p $PORT -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes"
+          INCOMING="${ADMIN_DIR}.incoming"
+          $SSH "$USER_NAME@$HOST" "mkdir -p '$INCOMING'"
+          rsync -az --delete -e "$SSH" dist/ "$USER_NAME@$HOST:$INCOMING/"
+          scp -i "$HOME/.ssh/deploy_key" -P "$PORT" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            deploy/remote-deploy-admin.sh "$USER_NAME@$HOST:/tmp/panchayat-deploy-admin-$GITHUB_RUN_ID.sh"
+          $SSH "$USER_NAME@$HOST" \
+            "INCOMING='$INCOMING' ADMIN_DIR='$ADMIN_DIR' ADMIN_HOST='$ADMIN_HOST' COMMIT='$GITHUB_SHA' \
+             bash /tmp/panchayat-deploy-admin-$GITHUB_RUN_ID.sh; rc=\$?; rm -f /tmp/panchayat-deploy-admin-$GITHUB_RUN_ID.sh; exit \$rc"
