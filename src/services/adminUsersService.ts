@@ -32,6 +32,7 @@ export type AppUser = {
   profileCompleted: boolean;
   vipLevel: number | null;
   coins: number;
+  charm: number;
   lastActiveAt: string | null;
   online: boolean;
   inRoom: boolean;
@@ -50,6 +51,9 @@ const all = ENDPOINTS.giveAll;
 export const adminUsersService = {
   /** days empty = permanent ban; otherwise a suspension for that many days. */
   ban: async (id: number, days: number | null, reason: string) => apiRequest(`${base}/${id}/ban`, { method: "POST", body: { days, reason } }),
+  /** amount empty = all of it. Super Admin only. */
+  removeCoins: async (id: number, amount: number | null, reason: string) => unwrap<{ removed: number; balance: number }>(await apiRequest(`${base}/${id}/remove-coins`, { method: "POST", body: { amount, reason } })),
+  removeCharm: async (id: number, amount: number | null, reason: string) => unwrap<{ removed: number; charm: number }>(await apiRequest(`${base}/${id}/remove-charm`, { method: "POST", body: { amount, reason } })),
   unban: async (id: number) => apiRequest(`${base}/${id}/unban`, { method: "POST" }),
   giveAllCoins: async (coins: number, reason: string) => unwrap<{ id: number; recipients: number }>(await apiRequest(`${all}/coins`, { method: "POST", body: { coins, reason } })),
   giveAllRedPacket: async (productId: number | string, quantity: number, reason: string) =>

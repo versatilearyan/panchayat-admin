@@ -4,12 +4,12 @@
  * and Super Admins.
  */
 import { useEffect, useState } from "react";
-import { Ban, Gift, RefreshCw, ShieldCheck } from "lucide-react";
+import { Ban, Gift, MinusCircle, RefreshCw, ShieldCheck } from "lucide-react";
 import { useAdmin } from "../context";
 import { Avatar, Badge, Button, Card, Chips, Empty, fmtCoins, Loading, PageHeader } from "../components/ui";
 import { Pager } from "../components/WalletParts";
 import { GiveAllButton } from "../components/GiveAll";
-import { BanDialog, RedPacketGiftDialog } from "../components/UserModeration";
+import { BanDialog, RedPacketGiftDialog, RemoveDialog } from "../components/UserModeration";
 import { mediaHref } from "../components/MediaParts";
 import { adminUsersService, type AppUser, type UserFilter, type UserStats } from "../services/adminUsersService";
 import type { Paged } from "../services/rewardService";
@@ -41,6 +41,7 @@ export function UsersLivePage() {
   const { version, changed, toast } = useAdmin();
   const [banUser, setBanUser] = useState<AppUser | null>(null);
   const [packetUser, setPacketUser] = useState<AppUser | null>(null);
+  const [removeUser, setRemoveUser] = useState<AppUser | null>(null);
   const [tick, setTick] = useState(0);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [data, setData] = useState<Paged<AppUser> | null>(null);
@@ -149,13 +150,14 @@ export function UsersLivePage() {
           <Empty>No users match.</Empty>
         ) : (
           <div className="scroll-thin overflow-x-auto">
-            <table className="w-full min-w-[1040px] text-left text-sm">
+            <table className="w-full min-w-[1180px] text-left text-sm">
               <thead className="text-[11px] tracking-wide text-muted uppercase">
                 <tr className="border-b border-line">
                   <th className="px-4 py-2 font-bold">User</th>
                   <th className="px-2 py-2 font-bold">ID</th>
                   <th className="px-2 py-2 font-bold">Status</th>
                   <th className="px-2 py-2 text-right font-bold">Coins</th>
+                  <th className="px-2 py-2 text-right font-bold">Charm</th>
                   <th className="px-2 py-2 font-bold">VIP</th>
                   <th className="px-2 py-2 font-bold">Joined</th>
                   <th className="px-2 py-2 font-bold">Last active</th>
@@ -191,11 +193,15 @@ export function UsersLivePage() {
                       ) : null}
                     </td>
                     <td className="px-2 py-2.5 text-right tabular-nums">{fmtCoins(u.coins)}</td>
+                    <td className="px-2 py-2.5 text-right tabular-nums">{fmtCoins(u.charm)}</td>
                     <td className="px-2 py-2.5">{u.vipLevel ? <Badge tone="gold">VIP {u.vipLevel}</Badge> : <span className="text-muted">—</span>}</td>
                     <td className="px-2 py-2.5 whitespace-nowrap text-muted">{new Date(u.joinedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</td>
                     <td className="px-2 py-2.5 whitespace-nowrap text-muted">{ago(u.lastActiveAt)}</td>
                     <td className="px-4 py-2.5">
                       <span className="flex justify-end gap-1.5">
+                        <Button size="sm" variant="danger" onClick={() => setRemoveUser(u)} aria-label={`Remove coins or Charm from ${u.name ?? "user"}`}>
+                          <MinusCircle className="h-3.5 w-3.5" /> Coins/Charm
+                        </Button>
                         <Button size="sm" onClick={() => setPacketUser(u)} aria-label={`Give ${u.name ?? "user"} a red packet`}>
                           <Gift className="h-3.5 w-3.5" /> Red packet
                         </Button>
@@ -229,6 +235,7 @@ export function UsersLivePage() {
       </Card>
       <BanDialog user={banUser} onClose={() => setBanUser(null)} />
       <RedPacketGiftDialog user={packetUser} onClose={() => setPacketUser(null)} />
+      <RemoveDialog user={removeUser} onClose={() => setRemoveUser(null)} />
     </>
   );
 }

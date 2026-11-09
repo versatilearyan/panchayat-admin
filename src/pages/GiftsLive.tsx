@@ -23,6 +23,13 @@ export function GiftsLivePage() {
   const list = useList(() => giftCatalogService.list(), version);
   const [dialog, setDialog] = useState<Dialog>(null);
   const { cats, reload: reloadCats } = useGiftCategories();
+  // Lucky coins (random coins to the receiver of a gift): one switch, off by default
+  const [lucky, setLucky] = useState<boolean | null>(null);
+  useEffect(() => {
+    apiRequest<{ enabled: boolean }>("/api/v1/admin/manage/gifts/lucky")
+      .then((d) => setLucky(d.enabled))
+      .catch(() => undefined);
+  }, []);
   const [catsOpen, setCatsOpen] = useState(false);
   const [cat, setCat] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -103,6 +110,19 @@ export function GiftsLivePage() {
         sub="Live from the server. Add gifts with a picture, an SVGA or MP4 animation and an MP3 sound, set prices, and choose what's on sale."
         right={
           <span className="flex gap-2">
+            {lucky !== null ? (
+              <span className="flex items-center rounded-xl border border-line px-3">
+                <Toggle
+                  checked={lucky}
+                  onChange={(v) =>
+                    void apiRequest("/api/v1/admin/manage/gifts/lucky", { method: "PUT", body: { enabled: v } })
+                      .then(() => (setLucky(v), toast(v ? "Lucky coins are ON" : "Lucky coins are OFF")))
+                      .catch((e) => toast(e instanceof Error ? e.message : "Couldn't save", "error"))
+                  }
+                  label="Lucky coins"
+                />
+              </span>
+            ) : null}
             <Button onClick={() => setCatsOpen(true)}>Categories</Button>
             <Button variant="primary" onClick={() => setDialog({ kind: "add" })}>
               <Plus className="h-4 w-4" /> Add gift

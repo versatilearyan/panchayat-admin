@@ -153,3 +153,95 @@ function PacketForm({ user, onClose }: { user: AppUser; onClose: () => void }) {
     </div>
   );
 }
+
+/** Take coins or Charm away from a user (Super Admin): an amount, or all of it. */
+export function RemoveDialog({ user, onClose }: { user: AppUser | null; onClose: () => void }) {
+  return (
+    <Modal open={user !== null} onClose={onClose} title="Remove coins or Charm">
+      {user ? <RemoveForm key={user.id} user={user} onClose={onClose} /> : null}
+    </Modal>
+  );
+}
+
+function RemoveForm({ user, onClose }: { user: AppUser; onClose: () => void }) {
+  const { toast, changed } = useAdmin();
+  const [what, setWhat] = useState<"coins" | "charm">("coins");
+  const [all, setAll] = useState(false);
+  const [amount, setAmount] = useState("");
+  const [reason, setReason] = useState("");
+  const [sure, setSure] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const have = what === "coins" ? user.coins : user.charm;
+  const n = Math.round(Number(amount));
+  const ok = all ? have > 0 : n >= 1;
+
+  const submit = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = what === "coins" ? await adminUsersService.removeCoins(user.id, all ? null : n, reason.trim()) : await adminUsersService.removeCharm(user.id, all ? null : n, reason.trim());
+      toast(`Removed ${r.removed.toLocaleString("en-IN")} ${what === "coins" ? "coins" : "Charm"} from ${who(user)}`);
+      changed();
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong");
+      setBusy(false);
+      setSure(false);
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      <p className="rounded-2xl bg-ink px-3.5 py-3 text-sm ring-1 ring-line">
+        <span className="font-semibold">{who(user)}</span> <span className="text-muted">· ID {user.publicId}</span>
+        <span className="mt-1 block text-xs text-muted">
+          Has {user.coins.toLocaleString("en-IN")} coins and {user.charm.toLocaleString("en-IN")} Charm now.
+        </span>
+      </p>
+      <Chips
+        label="What to remove"
+        value={what}
+        onChange={(v) => {
+          setWhat(v);
+          setSure(false);
+        }}
+        options={[
+          { value: "coins", label: "Coins" },
+          { value: "charm", label: "Charm" },
+        ]}
+      />
+      <div>
+        <label className="label" htmlFor="rm-amount">
+          How much
+        </label>
+        <div className="flex items-center gap-2">
+          <input id="rm-amount" className="field h-10 w-40" inputMode="numeric" disabled={all} value={all ? "" : amount} placeholder={all ? "All of it" : "e.g. 50000"} onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))} />
+          <label className="flex items-center gap-1.5 text-sm">
+            <input type="checkbox" checked={all} onChange={(e) => (setAll(e.target.checked), setSure(false))} /> Remove all
+          </label>
+        </div>
+        <p className="mt-1 text-xs text-muted">Can't take more than they have.</p>
+      </div>
+      <div>
+        <label className="label" htmlFor="rm-why">
+          Reason (saved in the log)
+        </label>
+        <input id="rm-why" className="field h-10 w-full" maxLength={200} value={reason} onChange={(e) => setReason(e.target.value)} />
+      </div>
+      {error ? <ErrorNote>{error}</ErrorNote> : null}
+      <div className="flex justify-end gap-2">
+        <Button onClick={onClose}>Cancel</Button>
+        {sure ? (
+          <Button variant="danger" busy={busy} onClick={submit}>
+            Yes, remove {all ? "all" : n.toLocaleString("en-IN")} {what === "coins" ? "coins" : "Charm"}
+          </Button>
+        ) : (
+          <Button variant="danger" disabled={!ok} onClick={() => setSure(true)}>
+            Remove
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
