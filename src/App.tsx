@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ComponentType } from "react";
-import { Activity, BarChart3, Coins, CreditCard, Dice5, FileClock, ScrollText, Flag, Gift, IndianRupee, Mail, Landmark, LayoutDashboard, Lock, LogOut, MessagesSquare, Settings, ShoppingBag, UserCog, Users, Wallet, Crown, Sparkles, Eye, ListChecks } from "lucide-react";
+import { Activity, BarChart3, Coins, CreditCard, Dice5, FileClock, ScrollText, Flag, Gift, IndianRupee, Mail, Landmark, LayoutDashboard, Lock, LogOut, MessagesSquare, Settings, ShoppingBag, UserCog, Users, Wallet, Crown, Gem, Sparkles, Eye, ListChecks } from "lucide-react";
 import { adminApi } from "./api";
 import { getSession, setSession, type AdminSession } from "./api/session";
 import { BACKEND_ENABLED } from "./config/api";
@@ -26,6 +26,7 @@ import { WalletPage } from "./pages/Wallet";
 import { VipPage } from "./pages/Vip";
 import { VipCosmeticsPage } from "./pages/VipCosmetics";
 import { VipPlansPage } from "./pages/VipPlans";
+import { CpRingsPage } from "./pages/CpRings";
 import { StaffPage } from "./pages/Staff";
 import { SettingsPage } from "./pages/Settings";
 import { SarpanchPage } from "./pages/Sarpanch";
@@ -75,6 +76,7 @@ const NAV: { page: Page; label: string; icon: typeof Users; child?: boolean }[] 
   { page: "reports", label: "Reports", icon: Flag },
   { page: "gifts", label: "Gifts", icon: Gift },
   { page: "shop", label: "Shop items", icon: ShoppingBag },
+  { page: "cpRings", label: "CP ring charm", icon: Gem, child: true },
   { page: "coinPacks", label: "Coin packs", icon: Coins },
   { page: "rewards", label: "Spend rewards", icon: Dice5, child: true },
   { page: "redPackets", label: "Red packets", icon: Mail },
@@ -108,6 +110,7 @@ const PAGE_VIEW: Record<Page, ComponentType> = {
   coinLogs: CoinLogsPage,
   audit: AuditLogPage,
   shop: ShopPage,
+  cpRings: CpRingsPage,
   coinPacks: CoinPacksPage,
   redPackets: RedPacketsPage,
   wallets: WalletPage,
