@@ -13,7 +13,8 @@ import { apiRequest } from "../lib/api";
 import { Badge, Button, Card, Chips, Empty, fmtCoins, Loading, Modal, NumberField, PageHeader, Toggle } from "../components/ui";
 import { ConfirmDialog, Field, ListProblem, SearchBox, useList } from "../components/WalletParts";
 import { mediaHref, MediaPreview, UploadSlot } from "../components/MediaParts";
-import { GIFT_CATEGORIES, giftCatalogService, type ServerGift } from "../services/giftCatalogService";
+import { giftCatalogService, type ServerGift } from "../services/giftCatalogService";
+import { GiftCategoriesDialog, useGiftCategories, type GiftCategory } from "../components/GiftCategories";
 
 type Dialog = { kind: "add" } | { kind: "edit"; id: string } | { kind: "delete"; gift: ServerGift } | null;
 
@@ -21,6 +22,8 @@ export function GiftsLivePage() {
   const { version, can } = useAdmin();
   const list = useList(() => giftCatalogService.list(), version);
   const [dialog, setDialog] = useState<Dialog>(null);
+  const { cats, reload: reloadCats } = useGiftCategories();
+  const [catsOpen, setCatsOpen] = useState(false);
   const [cat, setCat] = useState<string | null>(null);
   const [q, setQ] = useState("");
   /** Edits made in the dialog show at once, before the list reloads. */
@@ -37,6 +40,54 @@ export function GiftsLivePage() {
       .then((ids) => setAnnounced(new Set(ids)))
       .catch(() => undefined);
   }, [version]);
+  // Fixed charm per gift (blank = 1 charm per 5 coins)
+  const [charms, setCharms] = useState<Record<string, number>>({});
+  useEffect(() => {
+    apiRequest<Record<string, number>>("/api/v1/admin/manage/gifts/charm")
+      .then((m) => setCharms(m ?? {}))
+      .catch(() => undefined);
+  }, [version]);
+  const saveCharm = async (id: string, raw: string) => {
+    const v = raw.trim() === "" ? null : Math.max(0, Math.round(Number(raw)));
+    if (v !== null && !Number.isFinite(v)) return;
+    if ((charms[id] ?? null) === v) return;
+    try {
+      await apiRequest(`/api/v1/admin/manage/gifts/${encodeURIComponent(id)}/charm`, { method: "PUT", body: { charm: v } });
+      setCharms((m) => {
+        const n = { ...m };
+        if (v === null) delete n[id];
+        else n[id] = v;
+        return n;
+      });
+      toast(v === null ? "Charm back to 1 per 5 coins" : `Charm set to ${v}`);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Couldn't save");
+    }
+  };
+  // Charm a gift earns a CP couple when the partners send it to each other (blank = 1 per 10 coins)
+  const [cpCharms, setCpCharms] = useState<Record<string, number>>({});
+  useEffect(() => {
+    apiRequest<Record<string, number>>("/api/v1/admin/manage/gifts/cp-charm")
+      .then((m) => setCpCharms(m ?? {}))
+      .catch(() => undefined);
+  }, [version]);
+  const saveCpCharm = async (id: string, raw: string) => {
+    const v = raw.trim() === "" ? null : Math.max(0, Math.round(Number(raw)));
+    if (v !== null && !Number.isFinite(v)) return;
+    if ((cpCharms[id] ?? null) === v) return;
+    try {
+      await apiRequest(`/api/v1/admin/manage/gifts/${encodeURIComponent(id)}/cp-charm`, { method: "PUT", body: { charm: v } });
+      setCpCharms((m) => {
+        const n = { ...m };
+        if (v === null) delete n[id];
+        else n[id] = v;
+        return n;
+      });
+      toast(v === null ? "CP Charm back to 1 per 10 coins" : `CP Charm set to ${v}`);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Couldn't save");
+    }
+  };
   const setAnnounce = async (id: string, on: boolean) => {
     setAnnounced((s) => {
       const n = new Set(s);
@@ -58,9 +109,12 @@ export function GiftsLivePage() {
         title="Gifts"
         sub="Live from the server. Add gifts with a picture, an SVGA or MP4 animation and an MP3 sound, set prices, and choose what's on sale."
         right={
-          <Button variant="primary" onClick={() => setDialog({ kind: "add" })}>
-            <Plus className="h-4 w-4" /> Add gift
-          </Button>
+          <span className="flex gap-2">
+            <Button onClick={() => setCatsOpen(true)}>Categories</Button>
+            <Button variant="primary" onClick={() => setDialog({ kind: "add" })}>
+              <Plus className="h-4 w-4" /> Add gift
+            </Button>
+          </span>
         }
       />
       {list.error ? <ListProblem error={list.error} onRetry={list.retry} /> : null}
@@ -69,7 +123,7 @@ export function GiftsLivePage() {
         action={<SearchBox value={q} onChange={setQ} label="Search gifts" />}
       >
         <div className="border-b border-line px-4 py-3">
-          <Chips label="Category" value={cat} onChange={setCat} options={[{ value: null, label: "All" }, ...GIFT_CATEGORIES.map((c) => ({ value: c, label: c }))]} />
+          <Chips label="Category" value={cat} onChange={setCat} options={[{ value: null, label: "All" }, ...cats.map((c) => ({ value: c.name, label: c.kind === "VIP" ? `👑 ${c.name}` : c.kind === "CP" ? `💞 ${c.name}` : c.name }))]} />
         </div>
         {list.loading && !list.data ? (
           <Loading />
@@ -91,6 +145,38 @@ export function GiftsLivePage() {
                     {g.animationFormat ? <Badge tone="info">{g.animationFormat}</Badge> : null}
                     {g.soundUrl ? <Badge tone="gold">MP3</Badge> : null}
                   </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <label className="text-xs font-semibold text-muted" htmlFor={`charm-${g.id}`}>
+                      Charm
+                    </label>
+                    <input
+                      id={`charm-${g.id}`}
+                      key={`${g.id}-${charms[g.id] ?? ""}`}
+                      className="field h-8 w-24 py-1 text-sm"
+                      inputMode="numeric"
+                      placeholder={String(Math.floor(g.price / 5))}
+                      defaultValue={charms[g.id] ?? ""}
+                      onBlur={(e) => void saveCharm(g.id, e.target.value.replace(/\D/g, ""))}
+                      aria-label={`Charm for ${g.name}`}
+                    />
+                    <span className="text-[11px] text-muted">per gift</span>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <label className="text-xs font-semibold text-muted" htmlFor={`cpcharm-${g.id}`}>
+                      CP Charm
+                    </label>
+                    <input
+                      id={`cpcharm-${g.id}`}
+                      key={`cp-${g.id}-${cpCharms[g.id] ?? ""}`}
+                      className="field h-8 w-24 py-1 text-sm"
+                      inputMode="numeric"
+                      placeholder={String(Math.floor(g.price / 10))}
+                      defaultValue={cpCharms[g.id] ?? ""}
+                      onBlur={(e) => void saveCpCharm(g.id, e.target.value.replace(/\D/g, ""))}
+                      aria-label={`CP Charm for ${g.name}`}
+                    />
+                    <span className="text-[11px] text-muted">when sent to a CP</span>
+                  </div>
                   <div className="mt-2">
                     <Toggle checked={announced.has(g.id)} onChange={(v) => void setAnnounce(g.id, v)} label="Server notification" hint="Everyone sees a banner when someone sends it" />
                   </div>
@@ -111,9 +197,11 @@ export function GiftsLivePage() {
         )}
       </Card>
 
+      <GiftCategoriesDialog open={catsOpen} onClose={() => setCatsOpen(false)} cats={cats} onChanged={() => void reloadCats()} />
       <Modal open={dialog?.kind === "add"} onClose={() => setDialog(null)} title="Add a gift" wide>
         {dialog?.kind === "add" ? (
           <GiftDetails
+            cats={cats}
             gift={null}
             onSaved={(g) => {
               put(g);
@@ -123,7 +211,7 @@ export function GiftsLivePage() {
         ) : null}
       </Modal>
       <Modal open={Boolean(editing)} onClose={() => setDialog(null)} title={editing ? `Edit ${editing.name}` : ""} wide>
-        {editing ? <GiftEditor key={editing.id} gift={editing} onChange={put} onClose={() => setDialog(null)} /> : null}
+        {editing ? <GiftEditor key={editing.id} cats={cats} gift={editing} onChange={put} onClose={() => setDialog(null)} /> : null}
       </Modal>
       {dialog?.kind === "delete" ? <DeleteGift gift={dialog.gift} onClose={() => setDialog(null)} /> : null}
     </>
@@ -131,7 +219,7 @@ export function GiftsLivePage() {
 }
 
 /** Name, price, category, order. New gifts start off sale until they have a picture. */
-function GiftDetails({ gift, onSaved }: { gift: ServerGift | null; onSaved: (g: ServerGift) => void }) {
+function GiftDetails({ gift, onSaved, cats }: { gift: ServerGift | null; onSaved: (g: ServerGift) => void; cats: GiftCategory[] }) {
   const { toast, changed } = useAdmin();
   const [name, setName] = useState(gift?.name ?? "");
   const [price, setPrice] = useState(gift?.price ?? 1000);
@@ -174,8 +262,11 @@ function GiftDetails({ gift, onSaved }: { gift: ServerGift | null; onSaved: (g: 
       </div>
       <Field id="gift-cat" label="Category">
         <select id="gift-cat" className="field" value={category} onChange={(e) => setCategory(e.target.value)}>
-          {GIFT_CATEGORIES.map((c) => (
-            <option key={c}>{c}</option>
+          {cats.map((c) => (
+            <option key={c.name} value={c.name}>
+              {c.name}
+              {c.kind === "VIP" ? " (VIP gifts)" : c.kind === "CP" ? " (CP gifts)" : ""}
+            </option>
           ))}
         </select>
       </Field>
@@ -193,7 +284,7 @@ function GiftDetails({ gift, onSaved }: { gift: ServerGift | null; onSaved: (g: 
   );
 }
 
-function GiftEditor({ gift, onChange, onClose }: { gift: ServerGift; onChange: (g: ServerGift) => void; onClose: () => void }) {
+function GiftEditor({ gift, onChange, onClose, cats }: { gift: ServerGift; onChange: (g: ServerGift) => void; onClose: () => void; cats: GiftCategory[] }) {
   const { toast, changed } = useAdmin();
   const [busy, setBusy] = useState(false);
   const done = (g: ServerGift, msg: string) => {
@@ -215,7 +306,7 @@ function GiftEditor({ gift, onChange, onClose }: { gift: ServerGift; onChange: (
 
   return (
     <div className="space-y-4">
-      <GiftDetails gift={gift} onSaved={onChange} />
+      <GiftDetails cats={cats} gift={gift} onSaved={onChange} />
       <div className="space-y-2.5 border-t border-line pt-4">
         <p className="label">Files</p>
         <UploadSlot

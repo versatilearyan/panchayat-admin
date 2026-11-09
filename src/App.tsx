@@ -25,6 +25,7 @@ import { RedPacketsPage } from "./pages/RedPackets";
 import { WalletPage } from "./pages/Wallet";
 import { VipPage } from "./pages/Vip";
 import { VipCosmeticsPage } from "./pages/VipCosmetics";
+import { VipPlansPage } from "./pages/VipPlans";
 import { StaffPage } from "./pages/Staff";
 import { SettingsPage } from "./pages/Settings";
 import { SarpanchPage } from "./pages/Sarpanch";
@@ -79,6 +80,7 @@ const NAV: { page: Page; label: string; icon: typeof Users; child?: boolean }[] 
   { page: "redPackets", label: "Red packets", icon: Mail },
   { page: "wallets", label: "Wallets", icon: Wallet },
   { page: "vip", label: "VIP Management", icon: Crown },
+  { page: "vipPlans", label: "VIP plans & gifts", icon: Crown, child: true },
   { page: "vipCosmetics", label: "Cosmetics", icon: Sparkles, child: true },
   { page: "revenue", label: "Revenue", icon: BarChart3 },
   { page: "payments", label: "Payments", icon: CreditCard, child: true },
@@ -110,6 +112,7 @@ const PAGE_VIEW: Record<Page, ComponentType> = {
   redPackets: RedPacketsPage,
   wallets: WalletPage,
   vip: VipPage,
+  vipPlans: VipPlansPage,
   vipCosmetics: VipCosmeticsPage,
   pricing: PricingPage,
   visitorPlans: VisitorPlansPage,

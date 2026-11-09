@@ -35,13 +35,26 @@ export type AppUser = {
   lastActiveAt: string | null;
   online: boolean;
   inRoom: boolean;
+  banned: boolean;
+  banPermanent: boolean;
+  /** When a suspension ends (null for a permanent ban or no ban). */
+  bannedUntil: string | null;
+  banReason: string | null;
 };
 
-export type UserFilter = "all" | "online" | "vip" | "new";
+export type UserFilter = "all" | "online" | "vip" | "new" | "banned";
 
 const base = ENDPOINTS.adminUsers;
+const all = ENDPOINTS.giveAll;
 
 export const adminUsersService = {
+  /** days empty = permanent ban; otherwise a suspension for that many days. */
+  ban: async (id: number, days: number | null, reason: string) => apiRequest(`${base}/${id}/ban`, { method: "POST", body: { days, reason } }),
+  unban: async (id: number) => apiRequest(`${base}/${id}/unban`, { method: "POST" }),
+  giveAllCoins: async (coins: number, reason: string) => unwrap<{ id: number; recipients: number }>(await apiRequest(`${all}/coins`, { method: "POST", body: { coins, reason } })),
+  giveAllRedPacket: async (productId: number | string, quantity: number, reason: string) =>
+    unwrap<{ id: number; recipients: number }>(await apiRequest(`${all}/red-packets`, { method: "POST", body: { productId: Number(productId), quantity, reason } })),
+  audience: async () => unwrap<{ recipients: number }>(await apiRequest(`${all}/audience`)),
   stats: async () => unwrap<UserStats>(await apiRequest(`${base}/stats`)),
   list: async (f: { page: number; q?: string; filter: UserFilter }) =>
     unwrap<Paged<AppUser>>(await apiRequest(`${base}?page=${f.page}&size=20&filter=${f.filter}${f.q ? `&q=${encodeURIComponent(f.q)}` : ""}`)),

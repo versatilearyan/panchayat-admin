@@ -40,6 +40,9 @@ const asProduct = (raw: unknown) => unwrap<RedPacketProduct>(raw);
 export const redPacketService = {
   /** Every product, including inactive ones. */
   list: async () => unwrap<RedPacketProduct[]>(await apiRequest(base)) ?? [],
+  /** Put red packets in one person's Bag. */
+  grant: async (userId: number, productId: RedPacketProduct["id"], quantity: number) =>
+    apiRequest(`${base}/users/${userId}/grant`, { method: "POST", body: { productId: Number(productId), quantity } }),
   create: async (input: RedPacketInput) => asProduct(await apiRequest(base, { method: "POST", body: input })),
   update: async (id: RedPacketProduct["id"], patch: RedPacketPatch) => asProduct(await apiRequest(`${base}/${id$(id)}`, { method: "PATCH", body: patch })),
   setActive: async (id: RedPacketProduct["id"], active: boolean) => asProduct(await apiRequest(`${base}/${id$(id)}/status?active=${active}`, { method: "PATCH" })),
