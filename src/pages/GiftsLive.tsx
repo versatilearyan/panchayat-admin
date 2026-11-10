@@ -263,6 +263,56 @@ function GiftDetails({ gift, onSaved, cats }: { gift: ServerGift | null; onSaved
   );
 }
 
+/** How big the video animation plays in the app: full screen, or a shape that floats across the width. */
+const SIZE_PRESETS: { label: string; ratio: string }[] = [
+  { label: "Full screen", ratio: "" },
+  { label: "Savanna King", ratio: "510 / 534" },
+  { label: "Sunset Romance", ratio: "510 / 704" },
+  { label: "Star Prince", ratio: "510 / 604" },
+  { label: "City Fireworks", ratio: "510 / 756" },
+  { label: "Crystal Palace", ratio: "510 / 798" },
+];
+
+function AnimationSize({ gift, onChange }: { gift: ServerGift; onChange: (g: ServerGift) => void }) {
+  const { toast, changed } = useAdmin();
+  const [ratio, setRatio] = useState(gift.animationRatio ?? "");
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    setBusy(true);
+    try {
+      await giftCatalogService.setDisplay(gift.id, ratio.trim());
+      onChange({ ...gift, animationRatio: ratio.trim() || null });
+      changed();
+      toast("Animation size saved");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Couldn't save the size.", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="space-y-2.5 border-t border-line pt-4">
+      <p className="label">Animation size in the app</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <select className="field max-w-[220px]" value={SIZE_PRESETS.some((p) => p.ratio === ratio) ? ratio : "custom"} onChange={(e) => e.target.value !== "custom" && setRatio(e.target.value)}>
+          {SIZE_PRESETS.map((p) => (
+            <option key={p.label} value={p.ratio}>
+              {p.label}
+              {p.ratio ? ` (${p.ratio})` : ""}
+            </option>
+          ))}
+          <option value="custom">Custom…</option>
+        </select>
+        <input className="field w-32" value={ratio} onChange={(e) => setRatio(e.target.value)} placeholder="510 / 534" aria-label="Width / height" />
+        <Button variant="primary" busy={busy} disabled={ratio.trim() === (gift.animationRatio ?? "")} onClick={save}>
+          Save size
+        </Button>
+      </div>
+      <p className="text-xs text-muted">Empty plays it full screen. A shape like 510 / 534 (width / height) floats it across the width, like Savanna King.</p>
+    </div>
+  );
+}
+
 function GiftEditor({ gift, onChange, onClose, cats }: { gift: ServerGift; onChange: (g: ServerGift) => void; onClose: () => void; cats: GiftCategory[] }) {
   const { toast, changed } = useAdmin();
   const [busy, setBusy] = useState(false);
@@ -286,6 +336,7 @@ function GiftEditor({ gift, onChange, onClose, cats }: { gift: ServerGift; onCha
   return (
     <div className="space-y-4">
       <GiftDetails cats={cats} gift={gift} onSaved={onChange} />
+      {gift.animationUrl && gift.animationFormat === "MP4" ? <AnimationSize gift={gift} onChange={onChange} /> : null}
       <div className="space-y-2.5 border-t border-line pt-4">
         <p className="label">Files</p>
         <UploadSlot

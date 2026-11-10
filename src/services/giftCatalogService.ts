@@ -20,6 +20,7 @@ export type ServerGift = {
   imageUrl: string | null;
   animationUrl: string | null;
   animationFormat: "SVGA" | "MP4" | null;
+  animationRatio?: string | null;
   soundUrl: string | null;
   createdAt?: string;
   updatedAt?: string;
@@ -37,6 +38,9 @@ export const giftCatalogService = {
   list: async () => unwrap<ServerGift[]>(await apiRequest(base)) ?? [],
   create: async (input: GiftInput) => unwrap<ServerGift>(await apiRequest(base, { method: "POST", body: input })),
   update: async (id: string, patch: GiftInput) => unwrap<ServerGift>(await apiRequest(`${base}/${id$(id)}`, { method: "PATCH", body: patch })),
+  setDisplay: async (id: string, ratio: string) => {
+    await apiRequest(`${base}/${id$(id)}/display`, { method: "PUT", body: { ratio } });
+  },
   remove: async (id: string) => {
     await apiRequest(`${base}/${id$(id)}`, { method: "DELETE" });
   },
