@@ -5,7 +5,7 @@
  * limits, extra seats, the Welcome Newbie gift and messages) and the numbers. Every change is recorded in the audit log.
  */
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Power, Trash2, UserCog, X } from "lucide-react";
+import { Plus, Power, ShieldPlus, Trash2, UserCog, X } from "lucide-react";
 import { useAdmin } from "../context";
 import { apiRequest } from "../lib/api";
 import { Badge, Button, Card, Chips, Empty, ErrorNote, Loading, Modal, NumberField, PageHeader, Toggle } from "../components/ui";
@@ -32,6 +32,7 @@ type NRoom = {
   extraSeats: boolean;
   visitors: number;
   welcomeGifts: number;
+  adminCount: number;
 };
 type Page = { content: NRoom[]; page: number; size: number; totalElements: number };
 type HostRow = { userId: string; name: string; avatarUrl: string | null; publicId: number; active: boolean; addedBy: string | null; rooms: number; activeRooms: number; giftsSent: number; giftCoins: number; newbiesWelcomed: number; lastActive: string | null };
@@ -49,7 +50,13 @@ type Cfg = {
   welcomeMessage: string;
   roomDescription: string;
   priority: number;
+  autoGreeting: boolean;
+  autoRewardEnabled: boolean;
+  autoRewardGiftId: string | null;
+  autoRewardCoins: number;
+  autoRewardCharm: number;
 };
+type GiftOpt = { id: string; name: string; active: boolean };
 type Stats = {
   totalRooms: number;
   activeRooms: number;
@@ -121,6 +128,7 @@ function RoomsTab() {
   const [error, setError] = useState("");
   const [create, setCreate] = useState(false);
   const [hostFor, setHostFor] = useState<NRoom | null>(null);
+  const [adminsOf, setAdminsOf] = useState<NRoom | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
 
   const load = useCallback(() => {
@@ -232,6 +240,9 @@ function RoomsTab() {
                         <Button size="sm" disabled={busy === r.roomId} onClick={() => setHostFor(r)}>
                           <UserCog className="h-3.5 w-3.5" aria-hidden /> Host
                         </Button>
+                        <Button size="sm" disabled={busy === r.roomId} onClick={() => setAdminsOf(r)}>
+                          <ShieldPlus className="h-3.5 w-3.5" aria-hidden /> Admins ({r.adminCount})
+                        </Button>
                         {r.status === "ACTIVE" ? (
                           <Button size="sm" disabled={busy === r.roomId} onClick={() => void act(r, () => apiRequest(`${base}/rooms/${r.roomId}/disable`, { method: "POST" }), "Room disabled")}>
                             <Power className="h-3.5 w-3.5" aria-hidden /> Disable
@@ -291,6 +302,7 @@ function RoomsTab() {
           }
         />
       </Modal>
+      <AdminsModal room={adminsOf} onClose={() => setAdminsOf(null)} onChanged={() => { changed(); load(); }} />
       <Modal open={Boolean(hostFor)} onClose={() => setHostFor(null)} title={hostFor ? `Host of ${hostFor.name}` : ""}>
         <p className="mb-2 text-sm text-muted">The new host becomes the owner of the room and takes the host seat.</p>
         <UserPicker
@@ -311,6 +323,52 @@ function RoomsTab() {
         />
       </Modal>
     </>
+  );
+}
+
+type RoomAdminUser = { userId: number; name: string; publicId?: number };
+
+/** The people who help the host run a welcome room (they can moderate seats and the mic queue, change the background and open the extra seats). */
+function AdminsModal({ room, onClose, onChanged }: { room: NRoom | null; onClose: () => void; onChanged: () => void }) {
+  const { toast } = useAdmin();
+  const [admins, setAdmins] = useState<RoomAdminUser[] | null>(null);
+  const id = room?.roomId;
+  useEffect(() => {
+    if (!id) return;
+    setAdmins(null);
+    apiRequest<{ admins: RoomAdminUser[] }>(`/api/v1/admin/rooms/${id}`)
+      .then((r) => setAdmins(r.admins ?? []))
+      .catch(() => setAdmins([]));
+  }, [id]);
+  const run = async (f: () => Promise<{ admins: RoomAdminUser[] }>, ok: string) => {
+    try {
+      const r = await f();
+      setAdmins(r.admins ?? []);
+      toast(ok);
+      onChanged();
+    } catch (e) {
+      toast(msg(e, "That didn't work"), "error");
+    }
+  };
+  return (
+    <Modal open={Boolean(room)} onClose={onClose} title={room ? `Admins of ${room.name}` : ""}>
+      <p className="mb-2 text-sm text-muted">The host owns the room. Add as many admins as you like (up to 20) to help the host.</p>
+      <UserPicker placeholder="Search a user to make admin" onPick={(u) => void run(() => apiRequest(`/api/v1/admin/rooms/${id}/admins`, { method: "POST", body: { userId: u.id } }), `${u.name} is an admin now`)} />
+      <ul className="mt-3 divide-y divide-line">
+        {admins === null ? <li className="py-3 text-sm text-muted">Loading...</li> : null}
+        {admins && !admins.length ? <li className="py-3 text-sm text-muted">No admins yet.</li> : null}
+        {(admins ?? []).map((a) => (
+          <li key={a.userId} className="flex items-center justify-between gap-3 py-2">
+            <span className="min-w-0 truncate text-sm font-semibold">
+              {a.name} <span className="text-xs font-normal text-muted">ID {a.publicId}</span>
+            </span>
+            <Button size="sm" onClick={() => void run(() => apiRequest(`/api/v1/admin/rooms/${id}/admins/${a.userId}`, { method: "DELETE" }), "Admin removed")}>
+              <X className="h-3.5 w-3.5" aria-hidden /> Remove
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </Modal>
   );
 }
 
@@ -418,6 +476,12 @@ function SettingsTab() {
   const [saved, setSaved] = useState<Cfg | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [gifts, setGifts] = useState<GiftOpt[]>([]);
+  useEffect(() => {
+    apiRequest<GiftOpt[]>("/api/v1/admin/manage/gifts")
+      .then((g) => setGifts(g ?? []))
+      .catch(() => setGifts([]));
+  }, []);
   useEffect(() => {
     apiRequest<Cfg>(`${base}/config`)
       .then((c) => {
@@ -478,10 +542,39 @@ function SettingsTab() {
           <Toggle checked={cfg.welcomeGiftEnabled} onChange={(v) => set("welcomeGiftEnabled", v)} label="Welcome Newbie gift available" hint="Hosts can send it once to each new member. The host pays its price from their own coins." />
           <div>
             <label className="label" htmlFor="nb-gift">
-              Welcome gift ID
+              Gift the host can send
             </label>
-            <input id="nb-gift" className="field" value={cfg.welcomeGiftId} onChange={(e) => set("welcomeGiftId", e.target.value)} />
-            <p className="mt-1 text-xs text-muted">Price, picture and animation are set in Gifts. The gift is called Welcome Newbie and stays off sale until you add its picture and turn it on.</p>
+            <select id="nb-gift" className="field" value={cfg.welcomeGiftId} onChange={(e) => set("welcomeGiftId", e.target.value)}>
+              {gifts.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                  {g.active ? "" : " (off sale)"}
+                </option>
+              ))}
+              {!gifts.some((g) => g.id === cfg.welcomeGiftId) ? <option value={cfg.welcomeGiftId}>{cfg.welcomeGiftId}</option> : null}
+            </select>
+            <p className="mt-1 text-xs text-muted">Price, picture and animation are set in Gifts. Welcome Newbie stays off sale until you add its picture and turn it on.</p>
+          </div>
+          <div className="space-y-3 rounded-2xl border border-line p-3">
+            <p className="text-sm font-bold">Automatic welcome for each new member</p>
+            <Toggle checked={cfg.autoGreeting} onChange={(v) => set("autoGreeting", v)} label="Greet by name in the room chat" hint='Shows "Welcome to Panchayat, <name>!" for everyone when a new member first enters.' />
+            <Toggle checked={cfg.autoRewardEnabled} onChange={(v) => set("autoRewardEnabled", v)} label="Give a welcome reward" hint="Each new member gets it once, the first time they enter any welcome room. It is free for the host." />
+            <div>
+              <label className="label" htmlFor="nb-rgift">
+                Reward gift (animation shows in the room)
+              </label>
+              <select id="nb-rgift" className="field" value={cfg.autoRewardGiftId ?? ""} onChange={(e) => set("autoRewardGiftId", e.target.value || null)}>
+                <option value="">No gift animation</option>
+                {gifts.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                    {g.active ? "" : " (off sale)"}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {num("Reward coins", "autoRewardCoins", "coins", "Added to the new member's wallet (0 to 1,000,000).")}
+            {num("Reward Charm", "autoRewardCharm", "charm", "Added to the new member's Charm (0 to 1,000,000).")}
           </div>
           <div>
             <label className="label" htmlFor="nb-title">
