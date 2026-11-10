@@ -211,20 +211,20 @@ function Live() {
             section="gacha-machines"
             title="Gacha machines"
             canSave={canSave}
-            note="Each roll uses a free spin, else a Gacha Card from the Parivar, else the price from the treasury (plus the coin fee from the player)."
+            note="Each person gets the free rolls per day: the Parivar fund pays the machine fee for it. After that a roll uses the person's own Gacha ticket, else their own gold (roll price). Normal opens at level 1, Advanced at the level you set (4)."
             cols={[
               { key: "name", label: "Name", type: "text" },
               { key: "tier", label: "Tier", type: "text", width: "100px" },
               { key: "imageUrl", label: "Image URL", type: "text", width: "170px" },
               { key: "animationUrl", label: "Animation URL", type: "text", width: "170px" },
-              { key: "priceFunds", label: "Price (funds)", type: "int" },
-              { key: "serviceFeeCoins", label: "Fee (coins)", type: "int" },
               { key: "freePerDay", label: "Free/day", type: "int" },
+              { key: "freeFundCost", label: "Fund pays per free roll", type: "int" },
+              { key: "rollPriceCoins", label: "Roll price (gold)", type: "int" },
               { key: "minLevel", label: "Min level", type: "int" },
               { key: "sortOrder", label: "Order", type: "int" },
               { key: "active", label: "On", type: "bool" },
             ]}
-            blank={{ name: "New machine", tier: "CUSTOM", imageUrl: "", animationUrl: "", priceFunds: 1000, serviceFeeCoins: 0, freePerDay: 0, minLevel: 1, sortOrder: 9, active: true }}
+            blank={{ name: "New machine", tier: "CUSTOM", imageUrl: "", animationUrl: "", priceFunds: 0, serviceFeeCoins: 0, freePerDay: 1, freeFundCost: 2000, rollPriceCoins: 1000, minLevel: 1, sortOrder: 9, active: true }}
           />
           <Card className="mt-4" title="Rewards of machine">
             <div className="px-4 py-3">
@@ -232,7 +232,7 @@ function Live() {
                 Machine ID
               </label>
               <input id="gm" className="field h-9 w-28 py-1" inputMode="numeric" value={machine} onChange={(e) => setMachine(Number(e.target.value.replace(/\D/g, "")) || 1)} />
-              <p className="mt-1 text-xs text-muted">Weight is the share of the chance: a reward with weight 10 among a total of 1000 is won 1% of the time. The app shows these chances to players.</p>
+              <p className="mt-1 text-xs text-muted">Kinds: COINS = the player's gold, FUNDS = Parivar fund, GIFT_CARD = a gift in the winner's Bag, WEAPON = extra Chori attempts for the Parivar (Amount = how many), BARRIER = Kavach, CHEST = chest, CARD = Gacha ticket(s), ITEM = frame / chat bubble / entry animation for Amount days (create the item in Spend rewards first). Weight is the share of the chance: a reward with weight 10 among a total of 1000 is won 1% of the time. The app shows these chances to players.</p>
             </div>
           </Card>
           <ConfigTable
@@ -243,8 +243,9 @@ function Live() {
             canSave={canSave}
             deletable
             cols={[
-              { key: "kind", label: "Kind", type: "enum", options: ["COINS", "FUNDS", "CHARM", "CHEST", "CARD", "BARRIER"] },
-              { key: "ref", label: "Item ID", type: "int", hint: "For CHEST / CARD (machine) / BARRIER: the ID of that item" },
+              { key: "kind", label: "Kind", type: "enum", options: ["COINS", "FUNDS", "CHARM", "CHEST", "CARD", "BARRIER", "GIFT_CARD", "WEAPON", "ITEM"] },
+              { key: "ref", label: "Item ID", type: "int", hint: "CHEST: chest ID. BARRIER (Kavach): barrier ID. ITEM: the ID of a frame / chat bubble / entry animation made in Spend rewards. Others: 0" },
+              { key: "giftId", label: "Gift ID", type: "text", width: "130px", hint: "GIFT_CARD only: which gift the card gives" },
               { key: "amount", label: "Amount", type: "int" },
               { key: "weight", label: "Weight", type: "int" },
               { key: "rarity", label: "Rarity", type: "enum", options: ["COMMON", "RARE", "EPIC", "LEGENDARY"] },
@@ -252,7 +253,7 @@ function Live() {
               { key: "imageUrl", label: "Image URL", type: "text", width: "160px" },
               { key: "active", label: "On", type: "bool" },
             ]}
-            blank={{ kind: "COINS", ref: 0, amount: 100, weight: 10, rarity: "COMMON", label: "100 coins", imageUrl: "", active: true }}
+            blank={{ kind: "COINS", ref: 0, giftId: "", amount: 100, weight: 10, rarity: "COMMON", label: "100 gold", imageUrl: "", active: true }}
           />
         </>
       ) : null}
@@ -695,6 +696,7 @@ const EXTRA_FIELDS: { key: string; label: string; type: "bool" | "int" | "enum";
   { key: "chatEnabled", label: "Family chat", type: "bool", group: "Feature switches" },
   { key: "voiceEnabled", label: "Parivar voice room", type: "bool", group: "Feature switches" },
   { key: "rankRewardsEnabled", label: "Weekly ranking prizes", type: "bool", group: "Feature switches" },
+  { key: "gachaTicketPrice", label: "Gacha ticket price (gold)", type: "int", group: "Limits", hint: "What one personal Gacha ticket costs. A roll with the player's own gold is set on each machine." },
   { key: "voiceMinLevel", label: "Voice room unlocks at level", type: "int", group: "Limits" },
   { key: "chestExpiryHours", label: "Chest stays open (hours)", type: "int", group: "Limits" },
   { key: "chestExpiryPolicy", label: "Unclaimed chest pieces", type: "enum", options: ["NONE", "REFUND_FUNDS"], group: "Limits", hint: "REFUND_FUNDS: their share of the price goes back to the treasury." },
