@@ -9,6 +9,7 @@ import { Login } from "./pages/Login";
 import { Overview } from "./pages/Overview";
 import { UsersPage } from "./pages/Users";
 import { RoomsLivePage as RoomsPage } from "./pages/RoomsLive";
+import { NewbieRoomsPage } from "./pages/NewbieRooms";
 import { ReportsPage } from "./pages/Reports";
 import { ActivityPage } from "./pages/Activity";
 import { GiftsPage } from "./pages/Gifts";
@@ -94,6 +95,7 @@ const NAV: { page: Page; label: string; icon: typeof Users; child?: boolean }[] 
   { page: "dailyTasks", label: "Daily tasks", icon: ListChecks },
   { page: "sarpanch", label: "Sarpanch", icon: Landmark },
   { page: "parivar", label: "Parivar", icon: UsersRound },
+  { page: "newbie", label: "Newbie rooms", icon: Sparkles },
   { page: "activity", label: "Activity log", icon: Activity },
   { page: "staff", label: "Staff", icon: UserCog },
   { page: "settings", label: "App settings", icon: Settings },
@@ -124,6 +126,7 @@ const PAGE_VIEW: Record<Page, ComponentType> = {
   dailyTasks: DailyTasksPage,
   sarpanch: SarpanchPage,
   parivar: ParivarPage,
+  newbie: NewbieRoomsPage,
   activity: ActivityPage,
   staff: StaffPage,
   settings: SettingsPage,

@@ -33,7 +33,7 @@ const CATEGORIES = ["Chai Adda", "Music", "Movies", "Bollywood", "Poetry", "Come
 const base = "/api/v1/admin/rooms";
 
 /** Search real users by name, email or ID. */
-function UserPicker({ onPick, placeholder = "Search a user by name, email or ID" }: { onPick: (u: FoundUser) => void; placeholder?: string }) {
+export function UserPicker({ onPick, placeholder = "Search a user by name, email or ID" }: { onPick: (u: FoundUser) => void; placeholder?: string }) {
   const [q, setQ] = useState("");
   const [rows, setRows] = useState<FoundUser[]>([]);
   useEffect(() => {
