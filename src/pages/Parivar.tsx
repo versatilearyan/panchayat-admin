@@ -26,6 +26,7 @@ type Settings = {
   consumeCharm: boolean;
   onePerUser: boolean;
   giftCoinsPerExp: number;
+  giftCoinsPerCharm: number;
   giftCountsForRanking: boolean;
   giftUserDailyCap: number;
   donationCoinsPerExp: number;
@@ -501,6 +502,7 @@ function SettingsCard({ s, onSave, busy, disabled }: { s: Settings; onSave: (b: 
     consumeCharm: s.consumeCharm,
     onePerUser: s.onePerUser,
     giftCoinsPerExp: String(s.giftCoinsPerExp),
+    giftCoinsPerCharm: String(s.giftCoinsPerCharm ?? 5),
     giftCountsForRanking: s.giftCountsForRanking,
     giftUserDailyCap: String(s.giftUserDailyCap),
     donationCoinsPerExp: String(s.donationCoinsPerExp),
@@ -527,6 +529,7 @@ function SettingsCard({ s, onSave, busy, disabled }: { s: Settings; onSave: (b: 
       consumeCharm: f.consumeCharm,
       onePerUser: f.onePerUser,
       giftCoinsPerExp: Math.round(num(f.giftCoinsPerExp)),
+      giftCoinsPerCharm: Math.max(1, Math.round(num(f.giftCoinsPerCharm))),
       giftCountsForRanking: f.giftCountsForRanking,
       giftUserDailyCap: Math.round(num(f.giftUserDailyCap)),
       donationCoinsPerExp: Math.round(num(f.donationCoinsPerExp)),
@@ -593,6 +596,7 @@ function SettingsCard({ s, onSave, busy, disabled }: { s: Settings; onSave: (b: 
         <div>
           <span className="label">Activity and treasury</span>
           <div className="mt-1 grid gap-3 sm:grid-cols-3">
+            {field("Gift coins = 1 Charm", <input className="field h-10 w-full" inputMode="numeric" disabled={disabled} value={f.giftCoinsPerCharm} onChange={(e) => set("giftCoinsPerCharm", int(e.target.value))} />, "Every gift sent inside a Parivar gives the receiver 1 Charm per this many coins (5 means 5 coins : 1 Charm).")}
             {field("Gift coins = 1 EXP", <input className="field h-10 w-full" inputMode="numeric" disabled={disabled} value={f.giftCoinsPerExp} onChange={(e) => set("giftCoinsPerExp", int(e.target.value))} />, "Gifts between members of one Parivar.")}
             {field("Daily gift EXP cap per person", <input className="field h-10 w-full" inputMode="numeric" disabled={disabled} value={f.giftUserDailyCap} onChange={(e) => set("giftUserDailyCap", int(e.target.value))} />)}
             <Toggle checked={f.giftCountsForRanking} onChange={(v) => set("giftCountsForRanking", v)} disabled={disabled} label="Gifts count for weekly ranking" />

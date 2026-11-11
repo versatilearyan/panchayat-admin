@@ -451,10 +451,11 @@ function TriggerInputs({ gift, value, onSave }: { gift: ServerGift; value?: Trig
 }
 
 
-type Lucky = { enabled: boolean; chancePercent: number; defaultMin: number; defaultMax: number; highChance: number; middleChance: number; minGiftCoins: number; dailyCap: number; pairDailyLimit: number };
+type Lucky = { enabled: boolean; chancePercent: number; defaultMin: number; defaultMax: number; highChance: number; middleChance: number; minGiftCoins: number; dailyCap: number; pairDailyLimit: number; coinsPerCharm: number };
 type LuckyLog = { todayCount: number; todayCoins: number; recent: { id: number; receiver?: string; receiverId: number; senderId?: number; giftId?: string; count: number; giftCoins: number; amount: number; createdAt: string }[] };
 
 const LUCKY_FIELDS: { key: keyof Lucky; label: string; hint?: string }[] = [
+  { key: "coinsPerCharm", label: "Coins = 1 Charm (every gift in rooms)", hint: "5 means a 2,000 coin gift gives 400 Charm. This is locked for every gift. 0 = use each gift's own Charm numbers." },
   { key: "chancePercent", label: "Chance a gift is lucky (%)", hint: "100 = every gift can be lucky." },
   { key: "defaultMin", label: "Least lucky coins", hint: "Used when a gift has no range of its own." },
   { key: "defaultMax", label: "Most lucky coins" },

@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Plus, Power, ShieldPlus, Trash2, UserCog, X } from "lucide-react";
 import { useAdmin } from "../context";
-import { apiRequest } from "../lib/api";
+import { apiRequest, apiUpload } from "../lib/api";
 import { Badge, Button, Card, Chips, Empty, ErrorNote, Loading, Modal, NumberField, PageHeader, Toggle } from "../components/ui";
 import { UserPicker } from "./RoomsLive";
 
@@ -55,6 +55,7 @@ type Cfg = {
   autoRewardGiftId: string | null;
   autoRewardCoins: number;
   autoRewardCharm: number;
+  backgroundUrl?: string | null;
 };
 type GiftOpt = { id: string; name: string; active: boolean };
 type Stats = {
@@ -539,6 +540,37 @@ function SettingsTab() {
       setBusy(false);
     }
   };
+  const uploadBg = async (file: File | undefined) => {
+    if (!file) return;
+    setBusy(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const c = await apiUpload<Cfg>(`${base}/background`, form).promise;
+      setCfg({ ...cfg, backgroundUrl: c.backgroundUrl });
+      setSaved({ ...saved, backgroundUrl: c.backgroundUrl });
+      toast("Background updated for the welcome rooms");
+      changed();
+    } catch (e) {
+      toast(msg(e, "Couldn't upload the picture"), "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const clearBg = async () => {
+    setBusy(true);
+    try {
+      const c = await apiRequest<Cfg>(`${base}/background`, { method: "DELETE" });
+      setCfg({ ...cfg, backgroundUrl: c.backgroundUrl });
+      setSaved({ ...saved, backgroundUrl: c.backgroundUrl });
+      toast("Back to the built-in background");
+      changed();
+    } catch (e) {
+      toast(msg(e, "Couldn't remove it"), "error");
+    } finally {
+      setBusy(false);
+    }
+  };
   const num = (label: string, k: keyof Cfg, suffix: string, hint: string) => (
     <div>
       <label className="label" htmlFor={`nb-${k}`}>
@@ -619,6 +651,28 @@ function SettingsTab() {
             </label>
             <textarea id="nb-msg" className="field min-h-[110px]" maxLength={600} value={cfg.welcomeMessage} onChange={(e) => set("welcomeMessage", e.target.value)} />
             <p className="mt-1 text-xs text-muted">Shown once in the welcome card when a new member first enters a welcome room.</p>
+          </div>
+        </div>
+      </Card>
+      <Card title="Room background" className="lg:col-span-2">
+        <div className="flex flex-wrap items-start gap-4 p-1">
+          <div className="h-48 w-28 shrink-0 overflow-hidden rounded-xl bg-black/30 ring-1 ring-white/10">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {cfg.backgroundUrl ? <img src={cfg.backgroundUrl} alt="Welcome room background" className="h-full w-full object-cover object-top" /> : <span className="grid h-full place-items-center px-2 text-center text-xs text-muted">Built-in picture</span>}
+          </div>
+          <div className="min-w-[220px] flex-1 space-y-3">
+            <p className="text-sm text-muted">The picture behind every welcome room. Use a tall picture (like 768 x 1376), JPG or PNG up to 10 MB. Every room follows it, except a room whose host chose their own picture from the room settings.</p>
+            <div className="flex flex-wrap gap-2">
+              <label className="inline-flex h-10 cursor-pointer items-center rounded-lg bg-accent px-4 text-sm font-semibold text-white">
+                {busy ? "Working…" : cfg.backgroundUrl ? "Change picture" : "Upload picture"}
+                <input type="file" accept="image/png,image/jpeg" className="sr-only" disabled={busy} onChange={(e) => { void uploadBg(e.target.files?.[0]); e.target.value = ""; }} />
+              </label>
+              {cfg.backgroundUrl ? (
+                <Button disabled={busy} onClick={() => void clearBg()}>
+                  Remove
+                </Button>
+              ) : null}
+            </div>
           </div>
         </div>
       </Card>
