@@ -36,7 +36,7 @@ type Settings = {
   minDonation: number;
   updatedBy: string | null;
 };
-type Level = { level: number; expNeeded: number; capacity: number; deputyCap: number; adminCap: number; frame: string };
+type Level = { level: number; expNeeded: number; fundNeeded: number; capacity: number; deputyCap: number; adminCap: number; frame: string };
 const FRAMES = ["wood", "bronze", "silver", "gold", "ruby", "diamond", "royal"];
 type Perm = { role: "DEPUTY" | "ADMIN" | "MEMBER"; perm: string; allowed: boolean };
 type Row = { id: number; code: number; name: string; sign: string; level: number; exp: number; funds: number; status: string; members: number; leader: string; createdAt: string };
@@ -630,7 +630,7 @@ function SettingsCard({ s, onSave, busy, disabled }: { s: Settings; onSave: (b: 
 function LevelsCard({ levels, onSave, busy, disabled }: { levels: Level[]; onSave: (b: Level[]) => void; busy: boolean; disabled: boolean }) {
   const [rows, setRows] = useState(levels.map((l) => ({ ...l })));
   const edit = (i: number, k: keyof Level, v: string) => setRows((r) => r.map((x, j) => (j === i ? { ...x, [k]: Number(v.replace(/\D/g, "")) } : x)));
-  const add = () => setRows((r) => [...r, { level: r.length + 1, expNeeded: (r.at(-1)?.expNeeded ?? 0) + 100000, capacity: (r.at(-1)?.capacity ?? 20) + 5, deputyCap: r.at(-1)?.deputyCap ?? 1, adminCap: r.at(-1)?.adminCap ?? 2, frame: r.at(-1)?.frame ?? "royal" }]);
+  const add = () => setRows((r) => [...r, { level: r.length + 1, expNeeded: (r.at(-1)?.expNeeded ?? 0) + 100000, fundNeeded: (r.at(-1)?.fundNeeded ?? 0) + 20000, capacity: (r.at(-1)?.capacity ?? 20) + 5, deputyCap: r.at(-1)?.deputyCap ?? 1, adminCap: r.at(-1)?.adminCap ?? 2, frame: r.at(-1)?.frame ?? "royal" }]);
   return (
     <Card
       className="mt-4"
@@ -646,7 +646,8 @@ function LevelsCard({ levels, onSave, busy, disabled }: { levels: Level[]; onSav
           <thead className="text-[11px] tracking-wide text-muted uppercase">
             <tr>
               <th className="py-2 text-left font-bold">Level</th>
-              <th className="py-2 text-left font-bold">EXP needed</th>
+              <th className="py-2 text-left font-bold">Activity (EXP) needed</th>
+              <th className="py-2 text-left font-bold">Family fund needed</th>
               <th className="py-2 text-left font-bold">Members</th>
               <th className="py-2 text-left font-bold">Deputies</th>
               <th className="py-2 text-left font-bold">Admins</th>
@@ -658,9 +659,9 @@ function LevelsCard({ levels, onSave, busy, disabled }: { levels: Level[]; onSav
             {rows.map((r, i) => (
               <tr key={i}>
                 <td className="py-1 font-semibold">{r.level}</td>
-                {(["expNeeded", "capacity", "deputyCap", "adminCap"] as const).map((k) => (
+                {(["expNeeded", "fundNeeded", "capacity", "deputyCap", "adminCap"] as const).map((k) => (
                   <td key={k} className="py-1 pr-2">
-                    <input className="field h-9 w-28 py-1" inputMode="numeric" disabled={disabled || (i === 0 && k === "expNeeded")} value={r[k]} onChange={(e) => edit(i, k, e.target.value)} aria-label={`${k} for level ${r.level}`} />
+                    <input className="field h-9 w-28 py-1" inputMode="numeric" disabled={disabled || (i === 0 && (k === "expNeeded" || k === "fundNeeded"))} value={r[k]} onChange={(e) => edit(i, k, e.target.value)} aria-label={`${k} for level ${r.level}`} />
                   </td>
                 ))}
                 <td className="py-1 pr-2">
