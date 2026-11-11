@@ -111,6 +111,7 @@ export function GiftsLivePage() {
         }
       />
       <LuckyCard />
+      <TagSlotsCard />
       {list.error ? <ListProblem error={list.error} onRetry={list.retry} /> : null}
       <Card
         title={list.data ? `${gifts.length} gifts · ${gifts.filter((g) => g.active).length} on sale` : "Gifts"}
@@ -552,6 +553,59 @@ function LuckyCard() {
             </table>
           </div>
         ) : null}
+      </div>
+    </Card>
+  );
+}
+
+type TagRules = { baseSlots: number; maxSlots: number; slotPrice: number; vipBonus: boolean };
+
+/** BFF tags: how many tags a person can hold, and what opening an extra slot costs in coins. Everyone can hold many tags of the same type. */
+function TagSlotsCard() {
+  const { toast } = useAdmin();
+  const [v, setV] = useState<TagRules | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    apiRequest<TagRules>("/api/v1/admin/tags/settings").then(setV).catch(() => undefined);
+  }, []);
+  if (!v) return null;
+  const save = async () => {
+    setBusy(true);
+    try {
+      setV(await apiRequest<TagRules>("/api/v1/admin/tags/settings", { method: "PUT", body: v }));
+      toast("Saved");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Couldn't save", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const num = (k: keyof TagRules, label: string, hint: string) => (
+    <div>
+      <label className="label" htmlFor={`tg-${k}`}>
+        {label}
+      </label>
+      <input id={`tg-${k}`} className="field h-10 w-44" inputMode="numeric" value={String(v[k])} onChange={(e) => setV({ ...v, [k]: Number(e.target.value.replace(/\D/g, "")) })} />
+      <p className="mt-1 text-xs text-muted">{hint}</p>
+    </div>
+  );
+  return (
+    <Card title="BFF tag slots" className="mb-4">
+      <div className="p-4">
+        <p className="text-sm text-muted">A person can hold many BFF tags, even several of the same type (Confidant, Apprentice, Sibling, Bro and sis, Brothers), each with a different person. Every tag uses one slot.</p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          {num("baseSlots", "Free slots for everyone", "How many tags everyone can hold without paying.")}
+          {num("maxSlots", "Most slots a person can have", "Free, bought and VIP slots together never go above this.")}
+          {num("slotPrice", "Price of one extra slot (coins)", "Paid from the person's wallet when they open a slot. 0 = free.")}
+          <div className="flex items-end">
+            <Toggle checked={v.vipBonus} onChange={(on) => setV({ ...v, vipBonus: on })} label="Each VIP level adds a slot" />
+          </div>
+        </div>
+        <div className="mt-4">
+          <Button variant="primary" busy={busy} onClick={() => void save()}>
+            Save
+          </Button>
+        </div>
       </div>
     </Card>
   );
