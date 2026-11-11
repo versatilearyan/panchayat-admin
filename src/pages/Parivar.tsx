@@ -27,6 +27,9 @@ type Settings = {
   onePerUser: boolean;
   giftCoinsPerExp: number;
   giftCoinsPerCharm: number;
+  changeNamePrice: number;
+  changeSignPrice: number;
+  changeLogoPrice: number;
   giftCountsForRanking: boolean;
   giftUserDailyCap: number;
   donationCoinsPerExp: number;
@@ -503,6 +506,9 @@ function SettingsCard({ s, onSave, busy, disabled }: { s: Settings; onSave: (b: 
     onePerUser: s.onePerUser,
     giftCoinsPerExp: String(s.giftCoinsPerExp),
     giftCoinsPerCharm: String(s.giftCoinsPerCharm ?? 5),
+    changeNamePrice: String(s.changeNamePrice ?? 5000),
+    changeSignPrice: String(s.changeSignPrice ?? 5000),
+    changeLogoPrice: String(s.changeLogoPrice ?? 5000),
     giftCountsForRanking: s.giftCountsForRanking,
     giftUserDailyCap: String(s.giftUserDailyCap),
     donationCoinsPerExp: String(s.donationCoinsPerExp),
@@ -530,6 +536,9 @@ function SettingsCard({ s, onSave, busy, disabled }: { s: Settings; onSave: (b: 
       onePerUser: f.onePerUser,
       giftCoinsPerExp: Math.round(num(f.giftCoinsPerExp)),
       giftCoinsPerCharm: Math.max(1, Math.round(num(f.giftCoinsPerCharm))),
+      changeNamePrice: Math.max(0, Math.round(num(f.changeNamePrice))),
+      changeSignPrice: Math.max(0, Math.round(num(f.changeSignPrice))),
+      changeLogoPrice: Math.max(0, Math.round(num(f.changeLogoPrice))),
       giftCountsForRanking: f.giftCountsForRanking,
       giftUserDailyCap: Math.round(num(f.giftUserDailyCap)),
       donationCoinsPerExp: Math.round(num(f.donationCoinsPerExp)),
@@ -596,6 +605,9 @@ function SettingsCard({ s, onSave, busy, disabled }: { s: Settings; onSave: (b: 
         <div>
           <span className="label">Activity and treasury</span>
           <div className="mt-1 grid gap-3 sm:grid-cols-3">
+            {field("Change name price (coins)", <input className="field h-10 w-full" inputMode="numeric" disabled={disabled} value={f.changeNamePrice} onChange={(e) => set("changeNamePrice", int(e.target.value))} />, "What the Mukhiya pays to change the Parivar name. 0 = free.")}
+            {field("Change title price (coins)", <input className="field h-10 w-full" inputMode="numeric" disabled={disabled} value={f.changeSignPrice} onChange={(e) => set("changeSignPrice", int(e.target.value))} />, "What the Mukhiya pays to change the Parivar title (the short sign). 0 = free.")}
+            {field("Change logo price (coins)", <input className="field h-10 w-full" inputMode="numeric" disabled={disabled} value={f.changeLogoPrice} onChange={(e) => set("changeLogoPrice", int(e.target.value))} />, "What the Mukhiya pays to change the Parivar logo. 0 = free.")}
             {field("Gift coins = 1 Charm", <input className="field h-10 w-full" inputMode="numeric" disabled={disabled} value={f.giftCoinsPerCharm} onChange={(e) => set("giftCoinsPerCharm", int(e.target.value))} />, "Every gift sent inside a Parivar gives the receiver 1 Charm per this many coins (5 means 5 coins : 1 Charm).")}
             {field("Gift coins = 1 EXP", <input className="field h-10 w-full" inputMode="numeric" disabled={disabled} value={f.giftCoinsPerExp} onChange={(e) => set("giftCoinsPerExp", int(e.target.value))} />, "Gifts between members of one Parivar.")}
             {field("Daily gift EXP cap per person", <input className="field h-10 w-full" inputMode="numeric" disabled={disabled} value={f.giftUserDailyCap} onChange={(e) => set("giftUserDailyCap", int(e.target.value))} />)}
