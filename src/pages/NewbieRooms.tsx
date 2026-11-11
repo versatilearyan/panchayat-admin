@@ -129,6 +129,8 @@ function RoomsTab() {
   const [create, setCreate] = useState(false);
   const [hostFor, setHostFor] = useState<NRoom | null>(null);
   const [adminsOf, setAdminsOf] = useState<NRoom | null>(null);
+  const [attach, setAttach] = useState(false);
+  const [attachId, setAttachId] = useState("");
   const [busy, setBusy] = useState<number | null>(null);
 
   const load = useCallback(() => {
@@ -165,9 +167,12 @@ function RoomsTab() {
       <Card
         title={`Welcome rooms${data ? ` (${data.totalElements})` : ""}`}
         action={
-          <Button variant="primary" onClick={() => setCreate(true)}>
-            <Plus className="h-4 w-4" aria-hidden /> New welcome room
-          </Button>
+          <span className="flex flex-wrap gap-2">
+            <Button onClick={() => setAttach(true)}>Add an existing room</Button>
+            <Button variant="primary" onClick={() => setCreate(true)}>
+              <Plus className="h-4 w-4" aria-hidden /> New welcome room
+            </Button>
+          </span>
         }
       >
         <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -283,6 +288,32 @@ function RoomsTab() {
         ) : null}
       </Card>
 
+      <Modal open={attach} onClose={() => setAttach(false)} title="Add an existing room">
+        <p className="mb-2 text-sm text-muted">Made a room in the app already? Enter its 7-digit room ID (shown under the room name). It becomes a welcome room: the welcome picture, the host seat, extra seats and the welcome features. Its owner becomes the host.</p>
+        <input className="field" value={attachId} onChange={(e) => setAttachId(e.target.value)} placeholder="e.g. 8978383" inputMode="numeric" aria-label="Room ID" />
+        <div className="mt-3 flex justify-end">
+          <Button
+            variant="primary"
+            disabled={!attachId.trim()}
+            onClick={() =>
+              void (async () => {
+                try {
+                  await apiRequest(`${base}/rooms/attach`, { method: "POST", body: { room: attachId.trim() } });
+                  toast("The room is a welcome room now");
+                  changed();
+                  setAttach(false);
+                  setAttachId("");
+                  load();
+                } catch (e) {
+                  toast(msg(e, "Couldn't add the room"), "error");
+                }
+              })()
+            }
+          >
+            Make it a welcome room
+          </Button>
+        </div>
+      </Modal>
       <Modal open={create} onClose={() => setCreate(false)} title="New welcome room">
         <p className="mb-2 text-sm text-muted">Pick the host. The room name and number are made by the server (Newbie Welcome #10001, #10002 ...).</p>
         <UserPicker
