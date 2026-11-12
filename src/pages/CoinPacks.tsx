@@ -3,7 +3,8 @@
  * pack (inactive too), add and edit packs, upload or replace a pack's image, and turn packs
  * on or off. Nothing here is demo data: without VITE_API_BASE_URL the page asks for the backend.
  */
-import { useMemo, useState, type InputHTMLAttributes } from "react";
+import { useEffect, useMemo, useState, type InputHTMLAttributes } from "react";
+import { apiRequest } from "../lib/api";
 import { Coins, ImageUp, Pencil, Plus, Power, PowerOff } from "lucide-react";
 import { ImageUploadForm } from "../components/ImageUploadForm";
 import { BACKEND_ENABLED } from "../config/api";
@@ -130,6 +131,7 @@ function CoinPacksLive() {
         {dialog?.kind === "image" ? <ImageForm key={String(dialog.pack.id)} pack={dialog.pack} justCreated={dialog.justCreated} onClose={close} /> : null}
       </Modal>
       {dialog?.kind === "deactivate" ? <DeactivateDialog pack={dialog.pack} onClose={close} /> : null}
+      <PlayProductsCard />
     </>
   );
 }
@@ -380,4 +382,80 @@ function PackForm({ pack, onClose, onCreated }: { pack: CoinPack | null; onClose
 
 function ImageForm({ pack, justCreated, onClose }: { pack: CoinPack; justCreated?: boolean; onClose: () => void }) {
   return <ImageUploadForm item={pack} justCreated={justCreated} onClose={onClose} inputId="cp-image" upload={(file, onProgress) => coinPackService.uploadImage(pack.id, file, onProgress)} />;
+}
+
+type PlayRow = { purpose: "COIN_PACK" | "VIP" | "RED_PACKET"; productId: number; name: string; priceInRupees: number; active: boolean; playProductId: string | null };
+const PURPOSE_LABEL = { COIN_PACK: "Coin pack", VIP: "VIP plan", RED_PACKET: "Red packet" } as const;
+
+/**
+ * Google Play products for the Android app. Google requires coins, VIP and red packets bought in the app to go through
+ * Google Play Billing. For each item, create an in-app product in the Play Console (a "consumable", with the same price)
+ * and write its Product ID here. An item with no Product ID can't be bought in the Android app.
+ */
+function PlayProductsCard() {
+  const { toast } = useAdmin();
+  const [rows, setRows] = useState<PlayRow[] | null>(null);
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const key = (r: PlayRow) => `${r.purpose}:${r.productId}`;
+  const load = () => {
+    apiRequest<PlayRow[]>("/api/v1/admin/play-products").then(setRows).catch(() => setRows([]));
+  };
+  useEffect(load, []);
+  if (!rows) return null;
+  const save = async (r: PlayRow) => {
+    const v = (draft[key(r)] ?? r.playProductId ?? "").trim();
+    try {
+      await apiRequest("/api/v1/admin/play-products", { method: "PUT", body: { purpose: r.purpose, productId: r.productId, playProductId: v } });
+      toast(v ? "Play product saved" : "Play product removed");
+      setDraft((d) => {
+        const n = { ...d };
+        delete n[key(r)];
+        return n;
+      });
+      load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Couldn't save", "error");
+    }
+  };
+  return (
+    <Card title="Google Play products (Android app)" className="mt-4">
+      <div className="p-4">
+        <p className="text-sm text-muted">Coins, VIP and red packets bought in the Android app are paid through Google Play. In the Play Console create an in-app product (consumable, same price) for each item and write its Product ID here (for example coins_500). Items without one are not on sale in the Android app. The website keeps using PayU.</p>
+        <div className="scroll-thin mt-3 overflow-x-auto">
+          <table className="w-full min-w-[560px] text-sm">
+            <thead className="text-[11px] tracking-wide text-muted uppercase">
+              <tr>
+                <th className="py-2 text-left font-bold">Item</th>
+                <th className="py-2 text-left font-bold">Price</th>
+                <th className="py-2 text-left font-bold">Play Product ID</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={key(r)} className="border-t border-line">
+                  <td className="py-2 pr-2">
+                    <span className="font-semibold">{r.name}</span>
+                    <span className="block text-xs text-muted">
+                      {PURPOSE_LABEL[r.purpose]}
+                      {r.active ? "" : " · off sale"}
+                    </span>
+                  </td>
+                  <td className="py-2 pr-2 text-xs">₹{r.priceInRupees}</td>
+                  <td className="py-2 pr-2">
+                    <input className="field h-9 w-52 py-1" placeholder="not set" value={draft[key(r)] ?? r.playProductId ?? ""} onChange={(e) => setDraft((d) => ({ ...d, [key(r)]: e.target.value }))} aria-label={`Play product ID for ${r.name}`} />
+                  </td>
+                  <td className="py-2 text-right">
+                    <Button size="sm" onClick={() => void save(r)} disabled={(draft[key(r)] ?? r.playProductId ?? "") === (r.playProductId ?? "")}>
+                      Save
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </Card>
+  );
 }
