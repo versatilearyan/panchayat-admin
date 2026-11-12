@@ -105,7 +105,7 @@ export function UsersLivePage() {
           <Tile label="Total users" value={stats.total} sub={`${fmtCoins(stats.profileCompleted)} finished their profile`} />
           <Tile label="Online now" value={stats.onlineNow} sub={`${fmtCoins(stats.inRoomsNow)} in rooms`} live />
           <Tile label="Active today" value={stats.activeToday} sub={`${fmtCoins(stats.active7Days)} in 7 days · ${fmtCoins(stats.active30Days)} in 30`} />
-          <Tile label="New users" value={stats.newToday} sub={`today · ${fmtCoins(stats.new7Days)} in 7 days · ${fmtCoins(stats.vipActive)} VIP`} />
+          <Tile label="New users" value={stats.newToday} sub={`today · ${fmtCoins(stats.new7Days)} in 7 days · ${fmtCoins(stats.vipActive)} VIP (${fmtCoins(stats.vipTrialActive ?? 0)} free trial)`} />
         </div>
       ) : null}
 
@@ -139,6 +139,7 @@ export function UsersLivePage() {
               { value: "all", label: "All" },
               { value: "online", label: "Online now" },
               { value: "vip", label: "VIP" },
+              { value: "trial", label: "Free trial" },
               { value: "new", label: "New (7 days)" },
               { value: "banned", label: "Banned" },
             ]}
@@ -194,7 +195,18 @@ export function UsersLivePage() {
                     </td>
                     <td className="px-2 py-2.5 text-right tabular-nums">{fmtCoins(u.coins)}</td>
                     <td className="px-2 py-2.5 text-right tabular-nums">{fmtCoins(u.charm)}</td>
-                    <td className="px-2 py-2.5">{u.vipLevel ? <Badge tone="gold">VIP {u.vipLevel}</Badge> : <span className="text-muted">—</span>}</td>
+                    <td className="px-2 py-2.5">
+                      {u.vipLevel ? (
+                        <span className="inline-flex flex-col items-start gap-0.5">
+                          <Badge tone="gold">{u.vipTrial ? `VIP ${u.vipLevel} · free trial` : `VIP ${u.vipLevel}`}</Badge>
+                          {u.vipEndsAt ? <span className="text-[11px] text-muted">ends {new Date(u.vipEndsAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span> : null}
+                        </span>
+                      ) : u.hadTrial ? (
+                        <span className="text-[11px] text-muted">trial ended</span>
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
+                    </td>
                     <td className="px-2 py-2.5 whitespace-nowrap text-muted">{new Date(u.joinedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</td>
                     <td className="px-2 py-2.5 whitespace-nowrap text-muted">{ago(u.lastActiveAt)}</td>
                     <td className="px-4 py-2.5">

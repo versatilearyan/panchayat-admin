@@ -12,7 +12,8 @@ import { Badge, Button, Card, Empty, ErrorNote, Loading, Modal, PageHeader, fmtC
 import { NeedsBackend } from "../components/WalletParts";
 
 type Plan = { id: number; name: string; days: number; priceInRupees: number; active: boolean; sortOrder: number };
-type Settings = { freeTrialDays: number; activeVip: number; endedVip: number };
+type Settings = { freeTrialDays: number; activeVip: number; endedVip: number; trialsGiven?: number; trialsToday?: number; trialsActive?: number; trialsBoughtAfter?: number };
+type TrialRow = { userId: number; publicId?: number | null; name?: string | null; email?: string | null; days: number; grantedAt: string; endsAt: string; status: "ACTIVE" | "ENDED" | "BOUGHT" };
 const base = "/api/v1/admin/vip-manage";
 
 export function VipPlansPage() {
@@ -28,10 +29,12 @@ function Live() {
   const [edit, setEdit] = useState<Plan | "new" | null>(null);
   const [giveAll, setGiveAll] = useState(false);
   const [trial, setTrial] = useState("");
+  const [trials, setTrials] = useState<TrialRow[] | null>(null);
 
   const load = useCallback(async () => {
     try {
       const [p, s] = await Promise.all([apiRequest<Plan[]>(`${base}/plans`), apiRequest<Settings>(`${base}/settings`)]);
+      apiRequest<TrialRow[]>(`${base}/trials?limit=50`).then(setTrials).catch(() => setTrials([]));
       setPlans(p);
       setSettings(s);
       setTrial(String(s.freeTrialDays));
@@ -103,6 +106,60 @@ function Live() {
             <p className="mt-1 text-xs text-muted">0 = no free trial. When it ends, they are asked to renew.</p>
           </div>
         </div>
+      ) : null}
+
+      {settings ? (
+        <Card title="Free VIP trial for new users" className="mb-4">
+          <div className="p-4">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              {(
+                [
+                  ["Got the trial (all time)", settings.trialsGiven ?? 0],
+                  ["Got it today", settings.trialsToday ?? 0],
+                  ["On the trial right now", settings.trialsActive ?? 0],
+                  ["Bought VIP after the trial", settings.trialsBoughtAfter ?? 0],
+                ] as const
+              ).map(([label, n]) => (
+                <div key={label} className="rounded-2xl border border-line bg-surface/60 px-4 py-3">
+                  <p className="text-[11px] font-bold tracking-wide text-muted uppercase">{label}</p>
+                  <p className="mt-1 font-display text-2xl font-bold tabular-nums">{fmtCoins(n)}</p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-sm text-muted">Every new user gets {settings.freeTrialDays} days of VIP 1 automatically when they finish their profile. Change the number above. In Users you can filter "Free trial" to see who is on it.</p>
+            {!trials ? null : trials.length === 0 ? (
+              <p className="mt-3 text-sm text-muted">Nobody has got the trial yet.</p>
+            ) : (
+              <div className="scroll-thin mt-3 overflow-x-auto">
+                <table className="w-full min-w-[560px] text-sm">
+                  <thead className="text-[11px] tracking-wide text-muted uppercase">
+                    <tr>
+                      <th className="py-2 text-left font-bold">User</th>
+                      <th className="py-2 text-left font-bold">Got it</th>
+                      <th className="py-2 text-left font-bold">Ends</th>
+                      <th className="py-2 text-left font-bold">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trials.map((t) => (
+                      <tr key={t.userId} className="border-t border-line">
+                        <td className="py-2 pr-2">
+                          <span className="font-semibold">{t.name ?? "New user"}</span>
+                          <span className="block text-xs text-muted">{t.email}</span>
+                        </td>
+                        <td className="py-2 pr-2 text-xs">{new Date(t.grantedAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
+                        <td className="py-2 pr-2 text-xs">{new Date(t.endsAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
+                        <td className="py-2">
+                          <Badge tone={t.status === "ACTIVE" ? "ok" : t.status === "BOUGHT" ? "gold" : "muted"}>{t.status === "ACTIVE" ? "On trial" : t.status === "BOUGHT" ? "Bought VIP" : "Ended"}</Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </Card>
       ) : null}
 
       <Card title="Plans on sale">

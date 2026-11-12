@@ -16,6 +16,7 @@ export type UserStats = {
   active7Days: number;
   active30Days: number;
   vipActive: number;
+  vipTrialActive?: number;
   profileCompleted: number;
 };
 
@@ -31,6 +32,10 @@ export type AppUser = {
   joinedAt: string;
   profileCompleted: boolean;
   vipLevel: number | null;
+  /** On the free VIP trial for new users right now (not bought or extended). */
+  vipTrial?: boolean;
+  vipEndsAt?: string | null;
+  hadTrial?: boolean;
   coins: number;
   charm: number;
   lastActiveAt: string | null;
@@ -43,7 +48,7 @@ export type AppUser = {
   banReason: string | null;
 };
 
-export type UserFilter = "all" | "online" | "vip" | "new" | "banned";
+export type UserFilter = "all" | "online" | "vip" | "trial" | "new" | "banned";
 
 const base = ENDPOINTS.adminUsers;
 const all = ENDPOINTS.giveAll;
