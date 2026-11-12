@@ -112,6 +112,7 @@ export function GiftsLivePage() {
       />
       <LuckyCard />
       <TagSlotsCard />
+      <MusicSongsCard />
       {list.error ? <ListProblem error={list.error} onRetry={list.retry} /> : null}
       <Card
         title={list.data ? `${gifts.length} gifts · ${gifts.filter((g) => g.active).length} on sale` : "Gifts"}
@@ -606,6 +607,72 @@ function TagSlotsCard() {
             Save
           </Button>
         </div>
+      </div>
+    </Card>
+  );
+}
+
+type MusicRow = { id: number; title: string; artist: string; duration: number; size_bytes: number; status: "LIVE" | "HIDDEN"; created_at: string; uploader?: string; uploader_email?: string };
+
+/** Room music: the songs people uploaded (live for everyone at once). An admin can hide or delete one that breaks the rules. */
+function MusicSongsCard() {
+  const { toast } = useAdmin();
+  const [rows, setRows] = useState<MusicRow[] | null>(null);
+  const load = () => {
+    apiRequest<MusicRow[]>("/api/v1/admin/music/songs").then(setRows).catch(() => setRows([]));
+  };
+  useEffect(load, []);
+  if (!rows) return null;
+  const act = async (id: number, what: "hide" | "show" | "delete") => {
+    if (what === "delete" && !window.confirm("Delete this song for good?")) return;
+    try {
+      await apiRequest(`/api/v1/admin/music/songs/${id}${what === "delete" ? "" : `/${what}`}`, { method: what === "delete" ? "DELETE" : "PUT" });
+      toast(what === "delete" ? "Song deleted" : what === "hide" ? "Song hidden" : "Song shown again");
+      load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Couldn't do that", "error");
+    }
+  };
+  return (
+    <Card title={`Room music (${rows.length})`} className="mb-4">
+      <div className="p-4">
+        <p className="text-sm text-muted">Songs people uploaded go live for everyone at once. Hide one to take it out of the library (you can show it again), or delete it for good.</p>
+        {rows.length === 0 ? (
+          <p className="mt-3 text-sm text-muted">No songs uploaded yet.</p>
+        ) : (
+          <div className="scroll-thin mt-3 overflow-x-auto">
+            <table className="w-full min-w-[560px] text-sm">
+              <thead className="text-[11px] tracking-wide text-muted uppercase">
+                <tr>
+                  <th className="py-2 text-left font-bold">Song</th>
+                  <th className="py-2 text-left font-bold">Uploaded by</th>
+                  <th className="py-2 text-left font-bold">Size</th>
+                  <th className="py-2 text-left font-bold">Status</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.id} className="border-t border-line">
+                    <td className="py-2 pr-2">
+                      <span className="font-semibold">{r.title}</span>
+                      <span className="block text-xs text-muted">{r.artist}</span>
+                    </td>
+                    <td className="py-2 pr-2 text-xs">{r.uploader ?? "?"}<span className="block text-muted">{r.uploader_email}</span></td>
+                    <td className="py-2 pr-2 text-xs">{(r.size_bytes / 1024 / 1024).toFixed(1)} MB</td>
+                    <td className="py-2 pr-2"><Badge>{r.status === "LIVE" ? "Live" : "Hidden"}</Badge></td>
+                    <td className="py-2 text-right">
+                      <span className="inline-flex gap-1.5">
+                        <Button size="sm" onClick={() => void act(r.id, r.status === "LIVE" ? "hide" : "show")}>{r.status === "LIVE" ? "Hide" : "Show"}</Button>
+                        <Button size="sm" variant="danger" onClick={() => void act(r.id, "delete")}>Delete</Button>
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </Card>
   );
