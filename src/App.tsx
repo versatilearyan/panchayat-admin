@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ComponentType } from "react";
-import { Activity, BarChart3, Coins, CreditCard, Dice5, FileClock, ScrollText, Flag, Gift, IndianRupee, Mail, Landmark, LayoutDashboard, Lock, LogOut, MessagesSquare, Settings, ShoppingBag, UserCog, Users, Wallet, Crown, Gem, UsersRound, Sparkles, Eye, ListChecks, Tag } from "lucide-react";
+import { Activity, BarChart3, Coins, CreditCard, Dice5, FileClock, ScrollText, Flag, Gift, IndianRupee, Mail, Landmark, LayoutDashboard, Lock, LogOut, MessagesSquare, Settings, ShoppingBag, UserCog, Users, Wallet, Crown, Gem, UsersRound, Sparkles, Eye, ListChecks, Tag, PartyPopper } from "lucide-react";
 import { adminApi } from "./api";
 import { getSession, setSession, type AdminSession } from "./api/session";
 import { BACKEND_ENABLED } from "./config/api";
@@ -11,6 +11,7 @@ import { UsersPage } from "./pages/Users";
 import { RoomsLivePage as RoomsPage } from "./pages/RoomsLive";
 import { NewbieRoomsPage } from "./pages/NewbieRooms";
 import { ProfileTitlesPage } from "./pages/ProfileTitles";
+import { FestivalsPage } from "./pages/Festivals";
 import { ReportsPage } from "./pages/Reports";
 import { ActivityPage } from "./pages/Activity";
 import { GiftsPage } from "./pages/Gifts";
@@ -97,6 +98,7 @@ const NAV: { page: Page; label: string; icon: typeof Users; child?: boolean }[] 
   { page: "sarpanch", label: "Sarpanch", icon: Landmark },
   { page: "parivar", label: "Parivar", icon: UsersRound },
   { page: "titles", label: "Profile titles", icon: Tag },
+  { page: "festivals", label: "Festival Manager", icon: PartyPopper },
   { page: "newbie", label: "Newbie rooms", icon: Sparkles },
   { page: "activity", label: "Activity log", icon: Activity },
   { page: "staff", label: "Staff", icon: UserCog },
@@ -129,6 +131,7 @@ const PAGE_VIEW: Record<Page, ComponentType> = {
   sarpanch: SarpanchPage,
   parivar: ParivarPage,
   titles: ProfileTitlesPage,
+  festivals: FestivalsPage,
   newbie: NewbieRoomsPage,
   activity: ActivityPage,
   staff: StaffPage,

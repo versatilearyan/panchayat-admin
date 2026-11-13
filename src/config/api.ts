@@ -8,6 +8,12 @@
  */
 export const BACKEND_URL = (import.meta.env.VITE_API_BASE_URL ?? "").trim().replace(/\/+$/, "");
 
+/**
+ * The user app (the website). The Festival Manager shows its /festival-preview page in a phone frame, so the preview is the real app code.
+ * Set VITE_USER_APP_URL to change it.
+ */
+export const USER_APP_URL = ((import.meta.env.VITE_USER_APP_URL ?? "").trim() || (import.meta.env.DEV ? "http://localhost:3000" : "https://panchayat.world")).replace(/\/+$/, "");
+
 /** True when sign-in and the Shop talk to the real backend. */
 export const BACKEND_ENABLED = BACKEND_URL !== "";
 
