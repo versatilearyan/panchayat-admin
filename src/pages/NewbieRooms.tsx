@@ -316,7 +316,29 @@ function RoomsTab() {
         </div>
       </Modal>
       <Modal open={create} onClose={() => setCreate(false)} title="New welcome room">
-        <p className="mb-2 text-sm text-muted">Pick the host. The room name and number are made by the server (Newbie Welcome #10001, #10002 ...).</p>
+        <div className="mb-3 rounded-xl border border-gold/30 bg-gold/5 p-3">
+          <p className="text-sm font-semibold">Official room of Panchayat</p>
+          <p className="mb-2 text-xs text-muted">The Sarpanch hosts it, sits on the host seat, welcomes every new member and sends the welcome gift from the Sarpanch ID. You can add room admins after.</p>
+          <Button
+            variant="gold"
+            onClick={() =>
+              void (async () => {
+                try {
+                  await apiRequest(`${base}/rooms/official`, { method: "POST" });
+                  toast("Official welcome room created");
+                  changed();
+                  setCreate(false);
+                  load();
+                } catch (e) {
+                  toast(msg(e, "Couldn't create the room"), "error");
+                }
+              })()
+            }
+          >
+            Create official room (Sarpanch hosts)
+          </Button>
+        </div>
+        <p className="mb-2 text-sm text-muted">Or pick a person as the host. The room name and number are made by the server (Newbie Welcome #10001, #10002 ...).</p>
         <UserPicker
           placeholder="Search the host by name, email or ID"
           onPick={(u) =>

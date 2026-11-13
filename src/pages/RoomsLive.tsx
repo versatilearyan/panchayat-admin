@@ -23,6 +23,7 @@ type LiveRoom = {
   ownerId: number;
   owner?: string;
   ownerPublicId?: number;
+  official?: boolean;
   online: number;
   createdAt?: string;
   admins: RoomAdminUser[];
@@ -143,6 +144,7 @@ export function RoomsLivePage() {
                   <p className="flex flex-wrap items-center gap-2">
                     <span className="truncate font-display text-[15px] font-bold">{r.name}</span>
                     {r.status === "ACTIVE" ? <Badge tone="ok">Live</Badge> : <Badge>Closed</Badge>}
+                    {r.official ? <Badge tone="gold">✔ Official</Badge> : null}
                     {r.isPrivate ? (
                       <Badge tone="info">
                         <Lock className="h-3 w-3" /> Private
@@ -247,6 +249,7 @@ function RoomForm({ room, onClose, onSaved }: { room: LiveRoom | null; onClose: 
   const [category, setCategory] = useState(room?.category ?? "Chai Adda");
   const [seats, setSeats] = useState(String(room?.maxParticipants ?? 10));
   const [isPrivate, setIsPrivate] = useState(room?.isPrivate ?? false);
+  const [official, setOfficial] = useState(room?.official ?? false);
   const [password, setPassword] = useState("");
   const [owner, setOwner] = useState<{ id: number; name: string } | null>(room ? { id: room.ownerId, name: room.owner ?? String(room.ownerId) } : null);
   const [busy, setBusy] = useState(false);
@@ -256,7 +259,7 @@ function RoomForm({ room, onClose, onSaved }: { room: LiveRoom | null; onClose: 
     setBusy(true);
     setError("");
     try {
-      const body = { name: name.trim(), description, category, maxParticipants: Number(seats), isPrivate, password: isPrivate && password ? password : undefined, ownerId: owner?.id };
+      const body = { name: name.trim(), description, category, maxParticipants: Number(seats), isPrivate, password: isPrivate && password ? password : undefined, ownerId: official ? undefined : owner?.id, official };
       if (room) await apiRequest(`${base}/${room.id}`, { method: "PATCH", body });
       else await apiRequest(`${base}`, { method: "POST", body });
       toast(room ? "Room saved" : "Room created. Everyone can see it in the app now.");
@@ -275,7 +278,14 @@ function RoomForm({ room, onClose, onSaved }: { room: LiveRoom | null; onClose: 
         </label>
         <input id="lr-name" className="field" maxLength={60} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Panchayat Official Mehfil" autoFocus={!room} />
       </div>
-      <div>
+      <label className="flex items-start gap-2 rounded-xl border border-gold/30 bg-gold/5 p-3 text-sm">
+        <input type="checkbox" className="mt-1" checked={official} onChange={(e) => setOfficial(e.target.checked)} />
+        <span>
+          <b>Official room of Panchayat</b>
+          <span className="block text-xs text-muted">The Sarpanch owns it and always sits on the owner seat. The app shows it as an official room. You pick the room admins after creating it.</span>
+        </span>
+      </label>
+      <div className={official ? "hidden" : ""}>
         <span className="label">Owner</span>
         {owner ? (
           <p className="mb-2 flex items-center gap-2 text-sm">
@@ -323,7 +333,7 @@ function RoomForm({ room, onClose, onSaved }: { room: LiveRoom | null; onClose: 
         <Button variant="ghost" onClick={onClose} className="flex-1">
           Cancel
         </Button>
-        <Button variant="primary" busy={busy} onClick={save} disabled={name.trim().length < 3 || !owner} className="flex-[1.4]">
+        <Button variant="primary" busy={busy} onClick={save} disabled={name.trim().length < 3 || (!owner && !official)} className="flex-[1.4]">
           {room ? "Save" : "Create room"}
         </Button>
       </div>
