@@ -58,13 +58,14 @@ const PERM_LABEL: Record<string, string> = {
   MANAGE_VOICE: "Start the Parivar voice room",
 };
 const ROLES: Perm["role"][] = ["DEPUTY", "ADMIN", "MEMBER"];
-type Sec = "general" | "chori" | "kavach" | "gacha" | "chests" | "shop" | "tasks" | "parivars" | "logs";
+type Sec = "general" | "chori" | "kavach" | "gacha" | "chests" | "treasure" | "shop" | "tasks" | "parivars" | "logs";
 const SECS: { value: Sec; label: string }[] = [
   { value: "general", label: "General, levels, roles" },
   { value: "chori", label: "Chori and switches" },
   { value: "kavach", label: "Kavach" },
   { value: "gacha", label: "Gacha" },
   { value: "chests", label: "Chests" },
+  { value: "treasure", label: "Family Treasure" },
   { value: "shop", label: "Shop and cheer" },
   { value: "tasks", label: "Tasks and prizes" },
   { value: "parivars", label: "Parivars" },
@@ -89,6 +90,7 @@ function Live() {
   const canSave = can("settings.edit");
   const [sec, setSec] = useState<Sec>("general");
   const [machine, setMachine] = useState(1);
+  const [tier, setTier] = useState(1);
   const [chestId, setChestId] = useState(1);
 
   const load = useCallback(async () => {
@@ -304,6 +306,65 @@ function Live() {
               { key: "active", label: "On", type: "bool" },
             ]}
             blank={{ kind: "COINS", ref: 0, amount: 100, weight: 10, label: "100 coins", active: true }}
+          />
+        </>
+      ) : null}
+
+      {sec === "treasure" ? (
+        <>
+          <ConfigTable
+            section="treasure-tiers"
+            title="Family Treasure chests (Normal, Advanced, Rare, Super)"
+            canSave={canSave}
+            note="Weekly target = the Parivar's weekly activity needed to earn this chest (once a week). Unlock = minutes between claiming and sending. The coin and diamond pools are shared between the members by luck and always add up to exactly the pool. Draws per member = how many item draws each member gets. Eligible after = hours a member must have been in the Parivar. Turn 'On' off to stop a chest from being earned (chests already earned stay)."
+            cols={[
+              { key: "code", label: "Code", type: "text", width: "100px" },
+              { key: "name", label: "Name", type: "text" },
+              { key: "enabled", label: "On", type: "bool" },
+              { key: "weeklyTarget", label: "Weekly target", type: "int" },
+              { key: "unlockMinutes", label: "Unlock (min)", type: "int" },
+              { key: "poolCoins", label: "Coin pool", type: "int" },
+              { key: "poolDiamonds", label: "Diamond pool", type: "int" },
+              { key: "drawsPerMember", label: "Draws/member", type: "int" },
+              { key: "eligibleMinHours", label: "Eligible after (h)", type: "int" },
+              { key: "imageUrl", label: "Image URL", type: "text", width: "160px" },
+              { key: "sortOrder", label: "Order", type: "int" },
+            ]}
+            blank={{ code: "CUSTOM", name: "New chest", enabled: false, weeklyTarget: 10000, unlockMinutes: 60, poolCoins: 10000, poolDiamonds: 0, drawsPerMember: 1, eligibleMinHours: 0, imageUrl: "", sortOrder: 9 }}
+          />
+          <Card className="mt-4" title="Rewards inside a chest">
+            <div className="px-4 py-3">
+              <label className="label" htmlFor="tid">
+                Chest ID (the number in the first table's row)
+              </label>
+              <input id="tid" className="field h-9 w-28 py-1" inputMode="numeric" value={tier} onChange={(e) => setTier(Number(e.target.value.replace(/D/g, "")) || 1)} />
+              <p className="mt-1 text-xs text-muted">
+                Kinds: GIFT = a gift card (write the Gift ID, Amount = how many), ITEM = a frame, chat bubble, entry effect, profile decoration or outfit made in Spend rewards (Item ID = its ID, Amount = days it lasts, 0 = its own length),
+                VIP_CARD = VIP days (Amount = days), TITLE and BADGE = shown in the profile collection (Label is its name). Coins and diamonds come from the pools above. Weight = chance (a bigger number is more likely; make Legendary and Ultra Rare small).
+                Limit per chest = the most times this reward can come out of one chest (0 = no limit).
+              </p>
+            </div>
+          </Card>
+          <ConfigTable
+            key={tier}
+            section="treasure-rewards"
+            parent={{ key: "tierId", value: tier }}
+            title="Treasure rewards"
+            canSave={canSave}
+            deletable
+            cols={[
+              { key: "kind", label: "Kind", type: "enum", options: ["GIFT", "ITEM", "VIP_CARD", "TITLE", "BADGE"] },
+              { key: "ref", label: "Item ID", type: "int", hint: "ITEM only: ID of the frame / bubble / entry effect in Spend rewards. Others: 0" },
+              { key: "giftId", label: "Gift ID", type: "text", width: "130px", hint: "GIFT only" },
+              { key: "amount", label: "Amount", type: "int" },
+              { key: "rarity", label: "Rarity", type: "enum", options: ["COMMON", "PREMIUM", "EPIC", "LEGENDARY", "ULTRA_RARE"] },
+              { key: "weight", label: "Weight", type: "int" },
+              { key: "maxPerChest", label: "Limit/chest", type: "int" },
+              { key: "label", label: "Label", type: "text" },
+              { key: "imageUrl", label: "Image URL", type: "text", width: "160px" },
+              { key: "active", label: "On", type: "bool" },
+            ]}
+            blank={{ kind: "BADGE", ref: 0, giftId: "", amount: 1, rarity: "COMMON", weight: 10, maxPerChest: 0, label: "New reward", imageUrl: "", active: true }}
           />
         </>
       ) : null}
@@ -812,7 +873,7 @@ function Stats() {
 }
 
 function Logs() {
-  const [kind, setKind] = useState<"funds" | "steal" | "gacha" | "chests">("funds");
+  const [kind, setKind] = useState<"funds" | "steal" | "gacha" | "chests" | "treasure" | "treasure-members" | "treasure-chests" | "treasure-audit">("funds");
   const [rows, setRows] = useState<Record<string, unknown>[] | null>(null);
   useEffect(() => {
     setRows(null);
@@ -834,6 +895,10 @@ function Logs() {
             { value: "steal", label: "Chori" },
             { value: "gacha", label: "Gacha" },
             { value: "chests", label: "Chests" },
+            { value: "treasure", label: "Treasure openings" },
+            { value: "treasure-members", label: "Treasure by member" },
+            { value: "treasure-chests", label: "Treasure chests" },
+            { value: "treasure-audit", label: "Treasure audit" },
           ]}
         />
       }
@@ -859,7 +924,7 @@ function Logs() {
                 <tr key={i}>
                   {cols.map((c) => (
                     <td key={c} className="px-3 py-1.5 whitespace-nowrap">
-                      {c === "createdAt" ? new Date(String(r[c])).toLocaleString("en-IN") : String(r[c] ?? "")}
+                      {c === "createdAt" || c === "unlockAt" ? new Date(String(r[c])).toLocaleString("en-IN") : String(r[c] ?? "")}
                     </td>
                   ))}
                 </tr>
