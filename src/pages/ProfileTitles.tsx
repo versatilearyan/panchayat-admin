@@ -3,7 +3,7 @@
  * People own them (free, bought, given here, or won in a Family Treasure chest) and wear a few on their profile.
  */
 import { useCallback, useEffect, useState } from "react";
-import { Gift as GiftIcon, Trash2, Upload, UserMinus } from "lucide-react";
+import { Gift as GiftIcon, Plus, Trash2, Upload, UserMinus } from "lucide-react";
 import { BACKEND_ENABLED } from "../config/api";
 import { useAdmin } from "../context";
 import { apiRequest, apiUpload } from "../lib/api";
@@ -14,8 +14,8 @@ import { UserPicker } from "./RoomsLive";
 
 const base = "/api/v1/admin/titles";
 const RARITIES = ["COMMON", "PREMIUM", "EPIC", "LEGENDARY", "ULTRA_RARE"];
-type Title = { id: number; name: string; iconUrl: string | null; colorFrom: string; colorTo: string; textColor: string; rarity: string; priceCoins: number; free: boolean; active: boolean; sortOrder: number; holders: number; wearing: number };
-type Holder = { userId: number; name: string; source: string; since: string; expiresAt: string | null; wearing: boolean };
+type Title = { id: number; name: string; iconUrl: string | null; colorFrom: string; colorTo: string; textColor: string; rarity: string; priceCoins: number; free: boolean; active: boolean; sortOrder: number; durationDays: number; forSale: boolean; saleFrom: string | null; saleUntil: string | null; minVipLevel: number; parivarOnly: boolean; holders: number; wearing: number; rules: number };
+type Holder = { userId: number; publicId?: number; name: string; source: string; since: string; expiresAt: string | null; wearing: boolean };
 const msg = (e: unknown, f: string) => (e instanceof Error && e.message ? e.message : f);
 
 function Pill({ t, name }: { t: { name: string; iconUrl: string | null; iconFormat?: string; colorFrom: string; colorTo: string; textColor: string }; name?: string }) {
@@ -94,7 +94,9 @@ function Live() {
                       <span className="font-mono text-xs text-gold">ID {t.id}</span>
                       <span className="flex flex-wrap gap-1.5">
                         <Badge tone="gold">{t.rarity}</Badge>
-                        {t.free ? <Badge tone="ok">Free for everyone</Badge> : t.priceCoins > 0 ? <Badge>{t.priceCoins.toLocaleString("en-IN")} coins</Badge> : <Badge>Gift / chest only</Badge>}
+                        {t.free ? <Badge tone="ok">Free for everyone</Badge> : t.forSale && t.priceCoins > 0 ? <Badge>{t.priceCoins.toLocaleString("en-IN")} coins</Badge> : <Badge>Not sold</Badge>}
+                        {t.durationDays > 0 ? <Badge>{t.durationDays} days</Badge> : <Badge>For ever</Badge>}
+                        {t.rules > 0 ? <Badge tone="info">{t.rules} auto rule(s)</Badge> : null}
                         <Badge>{t.holders} own</Badge>
                         <Badge>{t.wearing} wearing</Badge>
                       </span>
@@ -220,27 +222,81 @@ function Create({ canSave, onDone }: { canSave: boolean; onDone: () => Promise<v
   );
 }
 
+type Rule = { id: number; kind: string; value: string; days: number; active: boolean; matched: number; lastRun: string | null };
+const RULE_HELP: Record<string, string> = {
+  IDS: "A list of 7 digit user IDs (the rare people, the team ...). Paste them separated by commas, spaces or new lines.",
+  VIP_LEVEL: "Everyone who has this VIP level or a higher one.",
+  PARIVAR_ROLE: "Everyone who holds this role in any Parivar.",
+};
+const dateOf = (s: string | null) => (s ? s.slice(0, 10) : "");
+
 function Manage({ t, canSave, onChanged, onDeleted }: { t: Title; canSave: boolean; onChanged: () => Promise<void>; onDeleted: () => void }) {
   const { toast } = useAdmin();
-  const [f, setF] = useState({ name: t.name, colorFrom: t.colorFrom, colorTo: t.colorTo, textColor: t.textColor, rarity: t.rarity, priceCoins: t.priceCoins, free: t.free });
+  const [f, setF] = useState({
+    name: t.name,
+    colorFrom: t.colorFrom,
+    colorTo: t.colorTo,
+    textColor: t.textColor,
+    rarity: t.rarity,
+    priceCoins: t.priceCoins,
+    free: t.free,
+    durationDays: t.durationDays,
+    forSale: t.forSale,
+    minVipLevel: t.minVipLevel,
+    parivarOnly: t.parivarOnly,
+    saleFrom: dateOf(t.saleFrom),
+    saleUntil: dateOf(t.saleUntil),
+  });
   const [holders, setHolders] = useState<Holder[] | null>(null);
+  const [rules, setRules] = useState<Rule[] | null>(null);
   const [days, setDays] = useState(0);
+  const [ids, setIds] = useState("");
+  const [rk, setRk] = useState("IDS");
+  const [rv, setRv] = useState("");
+  const [rd, setRd] = useState(0);
   const loadHolders = useCallback(() => apiRequest<Holder[]>(`${base}/${t.id}/holders`).then(setHolders).catch(() => setHolders([])), [t.id]);
+  const loadRules = useCallback(() => apiRequest<Rule[]>(`${base}/${t.id}/rules`).then(setRules).catch(() => setRules([])), [t.id]);
   useEffect(() => {
     void loadHolders();
-  }, [loadHolders]);
+    void loadRules();
+  }, [loadHolders, loadRules]);
   const run = async (f2: () => Promise<unknown>, ok: string) => {
     try {
       await f2();
       toast(ok);
       await onChanged();
       await loadHolders();
+      await loadRules();
     } catch (e) {
       toast(msg(e, "That did not work"), "error");
     }
   };
+  const save = () =>
+    run(
+      () =>
+        apiRequest(`${base}/${t.id}`, {
+          method: "PUT",
+          body: {
+            name: f.name,
+            colorFrom: f.colorFrom,
+            colorTo: f.colorTo,
+            textColor: f.textColor,
+            rarity: f.rarity,
+            priceCoins: f.free ? 0 : f.priceCoins,
+            free: f.free,
+            durationDays: f.durationDays,
+            forSale: f.forSale,
+            minVipLevel: f.minVipLevel,
+            parivarOnly: f.parivarOnly,
+            saleFrom: f.saleFrom || undefined,
+            saleUntil: f.saleUntil || undefined,
+            clearSaleWindow: !f.saleFrom && !f.saleUntil,
+          },
+        }),
+      "Saved",
+    );
   return (
-    <div className="mt-3 space-y-4 rounded-xl border border-line bg-ink p-3">
+    <div className="mt-3 space-y-5 rounded-xl border border-line bg-ink p-3">
       <div className="flex flex-wrap items-end gap-4">
         <label className="text-xs font-semibold text-muted">
           Name
@@ -257,17 +313,108 @@ function Manage({ t, canSave, onChanged, onDeleted }: { t: Title; canSave: boole
             ))}
           </select>
         </label>
-        <Toggle checked={f.free} onChange={(v) => setF({ ...f, free: v })} label="Free" disabled={!canSave} />
-        {!f.free ? (
-          <label className="text-xs font-semibold text-muted">
-            Price
-            <input className="field mt-1 h-9 w-32 py-1" inputMode="numeric" value={f.priceCoins} onChange={(e) => setF({ ...f, priceCoins: Number(e.target.value.replace(/\D/g, "")) || 0 })} disabled={!canSave} />
-          </label>
-        ) : null}
-        <Button variant="gold" disabled={!canSave} onClick={() => void run(() => apiRequest(`${base}/${t.id}`, { method: "PUT", body: { ...f, priceCoins: f.free ? 0 : f.priceCoins } }), "Saved")}>
-          Save
-        </Button>
       </div>
+
+      <div className="rounded-xl border border-line p-3">
+        <p className="mb-2 text-xs font-bold text-muted uppercase">Who gets it and for how long</p>
+        <div className="flex flex-wrap items-end gap-4">
+          <Toggle checked={f.free} onChange={(v) => setF({ ...f, free: v })} label="Free for everyone" disabled={!canSave} />
+          {!f.free ? <Toggle checked={f.forSale} onChange={(v) => setF({ ...f, forSale: v })} label="Sell in the store" hint="Off = nobody can buy it; only chests, rules and you give it." disabled={!canSave} /> : null}
+          {!f.free && f.forSale ? (
+            <>
+              <label className="text-xs font-semibold text-muted">
+                Price (coins)
+                <input className="field mt-1 h-9 w-28 py-1" inputMode="numeric" value={f.priceCoins} onChange={(e) => setF({ ...f, priceCoins: Number(e.target.value.replace(/\D/g, "")) || 0 })} disabled={!canSave} />
+              </label>
+              <label className="text-xs font-semibold text-muted">
+                Only VIP level
+                <input className="field mt-1 h-9 w-20 py-1" inputMode="numeric" value={f.minVipLevel} onChange={(e) => setF({ ...f, minVipLevel: Number(e.target.value.replace(/\D/g, "")) || 0 })} disabled={!canSave} />
+              </label>
+              <Toggle checked={f.parivarOnly} onChange={(v) => setF({ ...f, parivarOnly: v })} label="Parivar members only" disabled={!canSave} />
+              <label className="text-xs font-semibold text-muted">
+                On sale from
+                <input type="date" className="field mt-1 h-9 py-1" value={f.saleFrom} onChange={(e) => setF({ ...f, saleFrom: e.target.value })} disabled={!canSave} />
+              </label>
+              <label className="text-xs font-semibold text-muted">
+                On sale until
+                <input type="date" className="field mt-1 h-9 py-1" value={f.saleUntil} onChange={(e) => setF({ ...f, saleUntil: e.target.value })} disabled={!canSave} />
+              </label>
+            </>
+          ) : null}
+          <label className="text-xs font-semibold text-muted">
+            Lasts (days, 0 = for ever)
+            <input className="field mt-1 h-9 w-28 py-1" inputMode="numeric" value={f.durationDays} onChange={(e) => setF({ ...f, durationDays: Number(e.target.value.replace(/\D/g, "")) || 0 })} disabled={!canSave} />
+          </label>
+          <Button variant="gold" disabled={!canSave} onClick={() => void save()}>
+            Save
+          </Button>
+        </div>
+        <p className="mt-2 text-xs text-muted">
+          &quot;Lasts&quot; counts from the day someone buys it, wins it in a chest or gets it from you. Buying again before it ends adds more days. Clear both dates for a title that is always on sale.
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-line p-3">
+        <p className="mb-2 text-xs font-bold text-muted uppercase">Automatic rules (give it to the right people on its own)</p>
+        {!rules ? (
+          <Loading />
+        ) : !rules.length ? (
+          <p className="mb-2 text-xs text-muted">No rule yet.</p>
+        ) : (
+          <ul className="mb-3 divide-y divide-line text-sm">
+            {rules.map((r) => (
+              <li key={r.id} className="flex flex-wrap items-center gap-3 py-1.5">
+                <Badge tone="gold">{r.kind === "IDS" ? "ID list" : r.kind === "VIP_LEVEL" ? "VIP level" : "Parivar role"}</Badge>
+                <span className="max-w-[320px] truncate font-mono text-xs" title={r.value}>
+                  {r.kind === "IDS" ? `${r.value.split(",").length} IDs` : r.kind === "VIP_LEVEL" ? `${r.value} or higher` : r.value}
+                </span>
+                <span className="text-xs text-muted">{r.days === 0 ? "while they qualify" : `${r.days} days, once`}</span>
+                <span className="text-xs text-muted">{r.matched} people{r.lastRun ? ` · ran ${new Date(r.lastRun).toLocaleTimeString("en-IN")}` : ""}</span>
+                <span className="ml-auto flex items-center gap-2">
+                  <Toggle checked={r.active} label="On" disabled={!canSave} onChange={(v) => void run(() => apiRequest(`${base}/rules/${r.id}`, { method: "PUT", body: { active: v } }), v ? "Rule on" : "Rule off")} />
+                  <Button size="sm" variant="danger" disabled={!canSave} onClick={() => window.confirm("Delete this rule? People it gave the title to while they qualified lose it.") && void run(() => apiRequest(`${base}/rules/${r.id}`, { method: "DELETE" }), "Rule deleted")}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="flex flex-wrap items-start gap-3">
+          <label className="text-xs font-semibold text-muted">
+            Rule
+            <select className="field mt-1 h-9 w-40 py-1" value={rk} onChange={(e) => (setRk(e.target.value), setRv(""))} disabled={!canSave}>
+              <option value="IDS">List of user IDs</option>
+              <option value="VIP_LEVEL">VIP level</option>
+              <option value="PARIVAR_ROLE">Parivar role</option>
+            </select>
+          </label>
+          <label className="min-w-[220px] flex-1 text-xs font-semibold text-muted">
+            {rk === "IDS" ? "User IDs" : rk === "VIP_LEVEL" ? "Lowest VIP level" : "Role"}
+            {rk === "IDS" ? (
+              <textarea className="field mt-1 h-20 w-full py-1 font-mono text-xs" value={rv} onChange={(e) => setRv(e.target.value)} placeholder="4000123, 4000456, 4000789" disabled={!canSave} />
+            ) : rk === "PARIVAR_ROLE" ? (
+              <select className="field mt-1 h-9 w-full py-1" value={rv} onChange={(e) => setRv(e.target.value)} disabled={!canSave}>
+                <option value="">Choose…</option>
+                {["LEADER", "DEPUTY", "ADMIN", "MEMBER"].map((r) => (
+                  <option key={r}>{r}</option>
+                ))}
+              </select>
+            ) : (
+              <input className="field mt-1 h-9 w-full py-1" inputMode="numeric" value={rv} onChange={(e) => setRv(e.target.value.replace(/\D/g, ""))} placeholder="3" disabled={!canSave} />
+            )}
+          </label>
+          <label className="text-xs font-semibold text-muted">
+            Days (0 = while they qualify)
+            <input className="field mt-1 h-9 w-28 py-1" inputMode="numeric" value={rd} onChange={(e) => setRd(Number(e.target.value.replace(/\D/g, "")) || 0)} disabled={!canSave} />
+          </label>
+          <Button className="mt-5" variant="gold" disabled={!canSave || !rv.trim()} onClick={() => void run(async () => { await apiRequest(`${base}/${t.id}/rules`, { method: "POST", body: { kind: rk, value: rv, days: rd } }); setRv(""); }, "Rule added and run")}>
+            <Plus className="h-4 w-4" /> Add rule
+          </Button>
+        </div>
+        <p className="mt-2 text-xs text-muted">{RULE_HELP[rk]} Rules run when you add them and then every 5 minutes.</p>
+      </div>
+
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-gold">
           <Upload className="h-4 w-4" /> {t.iconUrl ? "Change picture / animation" : "Add picture / animation"}
@@ -302,20 +449,35 @@ function Manage({ t, canSave, onChanged, onDeleted }: { t: Title; canSave: boole
           <Trash2 className="h-4 w-4" /> Delete
         </Button>
       </div>
+
       <div>
         <p className="mb-1 flex items-center gap-1.5 text-xs font-bold text-muted uppercase">
-          <GiftIcon className="h-3.5 w-3.5" /> Give this title to a person
+          <GiftIcon className="h-3.5 w-3.5" /> Give it now
         </p>
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="text-xs text-muted">
-            Days (0 = for ever)
-            <input className="field ml-2 h-8 w-20 py-1" inputMode="numeric" value={days} onChange={(e) => setDays(Number(e.target.value.replace(/\D/g, "")) || 0)} disabled={!canSave} />
-          </label>
+        <label className="text-xs text-muted">
+          Days (0 = this title&apos;s own time)
+          <input className="field mb-2 ml-2 h-8 w-20 py-1" inputMode="numeric" value={days} onChange={(e) => setDays(Number(e.target.value.replace(/\D/g, "")) || 0)} disabled={!canSave} />
+        </label>
+        <div className="max-w-md">
+          <UserPicker placeholder="Search one user to give it to" onPick={(u) => void run(() => apiRequest(`${base}/${t.id}/grant`, { method: "POST", body: { userId: u.id, days } }), `${u.name} now has ${t.name}`)} />
         </div>
-        <div className="mt-2 max-w-md">
-          <UserPicker placeholder="Search a user to give it to" onPick={(u) => void run(() => apiRequest(`${base}/${t.id}/grant`, { method: "POST", body: { userId: u.id, days } }), `${u.name} now has ${t.name}`)} />
+        <div className="mt-3 flex flex-wrap items-start gap-3">
+          <textarea className="field h-16 w-72 py-1 font-mono text-xs" placeholder="Or paste many user IDs: 4000123, 4000456 ..." value={ids} onChange={(e) => setIds(e.target.value)} disabled={!canSave} />
+          <Button
+            disabled={!canSave || !ids.trim()}
+            onClick={() =>
+              void run(async () => {
+                const r = await apiRequest<{ given: number; notFound: string[] }>(`${base}/${t.id}/grant-ids`, { method: "POST", body: { ids, days } });
+                if (r.notFound.length) toast(`Given to ${r.given}. Not found: ${r.notFound.join(", ")}`, "error");
+                setIds("");
+              }, "Given to the list")
+            }
+          >
+            Give to these IDs
+          </Button>
         </div>
       </div>
+
       <div>
         <p className="mb-1 text-xs font-bold text-muted uppercase">Who has it</p>
         {!holders ? (
@@ -327,6 +489,7 @@ function Manage({ t, canSave, onChanged, onDeleted }: { t: Title; canSave: boole
             {holders.map((h) => (
               <li key={h.userId} className="flex items-center gap-3 py-1.5">
                 <span className="font-semibold">{h.name}</span>
+                {h.publicId ? <span className="font-mono text-xs text-muted">{h.publicId}</span> : null}
                 <Badge>{h.source}</Badge>
                 {h.wearing ? <Badge tone="ok">wearing</Badge> : null}
                 {h.expiresAt ? <span className="text-xs text-muted">until {new Date(h.expiresAt).toLocaleDateString("en-IN")}</span> : null}
