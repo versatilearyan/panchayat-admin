@@ -10,6 +10,7 @@ import { apiRequest } from "../lib/api";
 import { Badge, Button, Card, Chips, Empty, ErrorNote, Loading, PageHeader, Toggle, fmtCoins } from "../components/ui";
 import { NeedsBackend } from "../components/WalletParts";
 import { ConfigTable } from "../components/ConfigTable";
+import { ParivarLibrary } from "../components/ParivarLibrary";
 
 const base = "/api/v1/admin/parivar";
 
@@ -58,7 +59,7 @@ const PERM_LABEL: Record<string, string> = {
   MANAGE_VOICE: "Start the Parivar voice room",
 };
 const ROLES: Perm["role"][] = ["DEPUTY", "ADMIN", "MEMBER"];
-type Sec = "general" | "chori" | "kavach" | "gacha" | "chests" | "treasure" | "shop" | "tasks" | "parivars" | "logs";
+type Sec = "general" | "chori" | "kavach" | "gacha" | "chests" | "treasure" | "library" | "shop" | "tasks" | "parivars" | "logs";
 const SECS: { value: Sec; label: string }[] = [
   { value: "general", label: "General, levels, roles" },
   { value: "chori", label: "Chori and switches" },
@@ -66,6 +67,7 @@ const SECS: { value: Sec; label: string }[] = [
   { value: "gacha", label: "Gacha" },
   { value: "chests", label: "Chests" },
   { value: "treasure", label: "Family Treasure" },
+  { value: "library", label: "Parivar library" },
   { value: "shop", label: "Shop and cheer" },
   { value: "tasks", label: "Tasks and prizes" },
   { value: "parivars", label: "Parivars" },
@@ -340,7 +342,7 @@ function Live() {
               <input id="tid" className="field h-9 w-28 py-1" inputMode="numeric" value={tier} onChange={(e) => setTier(Number(e.target.value.replace(/D/g, "")) || 1)} />
               <p className="mt-1 text-xs text-muted">
                 Kinds: GIFT = a gift card (write the Gift ID, Amount = how many), ITEM = a frame, chat bubble, entry effect, profile decoration or outfit made in Spend rewards (Item ID = its ID, Amount = days it lasts, 0 = its own length),
-                VIP_CARD = VIP days (Amount = days), TITLE and BADGE = shown in the profile collection (Label is its name). Coins and diamonds come from the pools above. Weight = chance (a bigger number is more likely; make Legendary and Ultra Rare small).
+                VIP_CARD = VIP days (Amount = days), COLLECTIBLE = a badge, title, animation or gift picture you uploaded in the Parivar library tab (Item ID = its ID; its name and picture are used). PROFILE_TITLE = a wearable profile title made in the Profile titles page (Item ID = its ID; the winner can wear it on their profile). TITLE and BADGE = a plain text title or badge in the profile collection (Label is its name). Coins and diamonds come from the pools above. Weight = chance (a bigger number is more likely; make Legendary and Ultra Rare small).
                 Limit per chest = the most times this reward can come out of one chest (0 = no limit).
               </p>
             </div>
@@ -353,8 +355,8 @@ function Live() {
             canSave={canSave}
             deletable
             cols={[
-              { key: "kind", label: "Kind", type: "enum", options: ["GIFT", "ITEM", "VIP_CARD", "TITLE", "BADGE"] },
-              { key: "ref", label: "Item ID", type: "int", hint: "ITEM only: ID of the frame / bubble / entry effect in Spend rewards. Others: 0" },
+              { key: "kind", label: "Kind", type: "enum", options: ["GIFT", "ITEM", "VIP_CARD", "TITLE", "BADGE", "COLLECTIBLE", "PROFILE_TITLE"] },
+              { key: "ref", label: "Item ID", type: "int", hint: "ITEM only: ID of the frame / bubble / entry effect in Spend rewards. COLLECTIBLE: ID from the Parivar library tab. PROFILE_TITLE: ID from the Profile titles page. Others: 0" },
               { key: "giftId", label: "Gift ID", type: "text", width: "130px", hint: "GIFT only" },
               { key: "amount", label: "Amount", type: "int" },
               { key: "rarity", label: "Rarity", type: "enum", options: ["COMMON", "PREMIUM", "EPIC", "LEGENDARY", "ULTRA_RARE"] },
@@ -368,6 +370,8 @@ function Live() {
           />
         </>
       ) : null}
+
+      {sec === "library" ? <ParivarLibrary canSave={canSave} /> : null}
 
       {sec === "shop" ? (
         <>
