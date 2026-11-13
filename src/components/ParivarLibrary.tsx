@@ -80,7 +80,7 @@ export function ParivarLibrary({ canSave }: { canSave: boolean }) {
       <Card title="Add to the Parivar library">
         <div className="space-y-3 px-4 py-3">
           <p className="text-xs text-muted">
-            Upload a badge or gift picture (PNG, JPG), or an animation (SVGA, MP4). Then open the <b>Family Treasure</b> tab, add a reward of kind <b>COLLECTIBLE</b> and write this item&apos;s ID in &quot;Item ID&quot;. The winner gets it in their Parivar
+            Upload a picture (PNG, JPG, GIF, WEBP) or an animation (SVGA, MP4). Then open the <b>Family Treasure</b> tab, add a reward of kind <b>COLLECTIBLE</b> and write this item&apos;s ID in &quot;Item ID&quot;. The winner gets it in their Parivar
             collection (&quot;My rewards&quot;) with its picture or animation.
           </p>
           <div className="grid gap-3 sm:grid-cols-4">
@@ -110,7 +110,7 @@ export function ParivarLibrary({ canSave }: { canSave: boolean }) {
             <input className="field mt-1 h-9 w-full py-1" maxLength={200} value={desc} onChange={(e) => setDesc(e.target.value)} disabled={!canSave} />
           </label>
           <div className="flex flex-wrap items-center gap-3">
-            <input type="file" accept=".png,.jpg,.jpeg,.svga,.mp4" disabled={!canSave || busy} onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="text-xs" />
+            <input type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.svga,.mp4" disabled={!canSave || busy} onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="text-xs" />
             <Button variant="gold" busy={busy} disabled={!canSave || !file || !name.trim()} onClick={() => void upload()}>
               <Upload className="h-4 w-4" /> Upload
             </Button>

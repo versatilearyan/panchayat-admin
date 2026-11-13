@@ -8,6 +8,7 @@ import { BACKEND_ENABLED } from "../config/api";
 import { useAdmin } from "../context";
 import { apiRequest, apiUpload } from "../lib/api";
 import { Badge, Button, Card, Empty, ErrorNote, Loading, PageHeader, Toggle } from "../components/ui";
+import { MediaPreview, formatOf } from "../components/MediaParts";
 import { NeedsBackend } from "../components/WalletParts";
 import { UserPicker } from "./RoomsLive";
 
@@ -17,10 +18,10 @@ type Title = { id: number; name: string; iconUrl: string | null; colorFrom: stri
 type Holder = { userId: number; name: string; source: string; since: string; expiresAt: string | null; wearing: boolean };
 const msg = (e: unknown, f: string) => (e instanceof Error && e.message ? e.message : f);
 
-function Pill({ t, name }: { t: { name: string; iconUrl: string | null; colorFrom: string; colorTo: string; textColor: string }; name?: string }) {
+function Pill({ t, name }: { t: { name: string; iconUrl: string | null; iconFormat?: string; colorFrom: string; colorTo: string; textColor: string }; name?: string }) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full py-1 pl-1.5 pr-3 text-[13px] font-bold shadow" style={{ background: `linear-gradient(90deg, ${t.colorFrom}, ${t.colorTo})`, color: t.textColor }}>
-      {t.iconUrl ? <img src={t.iconUrl} alt="" className="h-5 w-5 object-contain" /> : <span className="text-[14px]">★</span>}
+      {t.iconUrl ? <MediaPreview media={{ url: t.iconUrl, format: t.iconFormat ?? formatOf(t.iconUrl) }} size={22} /> : <span className="text-[14px]">★</span>}
       {name ?? t.name}
     </span>
   );
@@ -61,9 +62,9 @@ function Live() {
         <Loading />
       ) : (
         <>
-          <Card title="How many titles a person can wear">
+          <Card title="How many titles a person can wear (0 = no limit)">
             <div className="flex flex-wrap items-center gap-3 px-4 py-3">
-              <input className="field h-9 w-24 py-1" inputMode="numeric" value={maxWorn} onChange={(e) => setMaxWorn(Number(e.target.value.replace(/\D/g, "")) || 1)} disabled={!canSave} />
+              <input className="field h-9 w-24 py-1" inputMode="numeric" value={maxWorn} onChange={(e) => setMaxWorn(Number(e.target.value.replace(/\D/g, "")) || 0)} disabled={!canSave} />
               <Button
                 variant="gold"
                 disabled={!canSave || maxWorn === data.maxWorn}
@@ -75,7 +76,7 @@ function Live() {
               >
                 Save
               </Button>
-              <span className="text-xs text-muted">1 to 10. People who wear more than this keep what they wear until they change it.</span>
+              <span className="text-xs text-muted">0 = no limit (the default): a person can wear every title they own. Or set a number up to 100.</span>
             </div>
           </Card>
 
@@ -186,7 +187,7 @@ function Create({ canSave, onDone }: { canSave: boolean; onDone: () => Promise<v
           <div>
             <p className="text-xs font-semibold text-muted">Preview</p>
             <div className="mt-1">
-              <Pill t={{ name: name || "Title name", iconUrl: preview, colorFrom: from, colorTo: to, textColor: text }} />
+              <Pill t={{ name: name || "Title name", iconUrl: preview, iconFormat: file ? formatOf(file.name) : undefined, colorFrom: from, colorTo: to, textColor: text }} />
             </div>
           </div>
         </div>
@@ -207,8 +208,8 @@ function Create({ canSave, onDone }: { canSave: boolean; onDone: () => Promise<v
             </label>
           ) : null}
           <label className="text-xs font-semibold text-muted">
-            Small picture (optional, PNG or JPG)
-            <input type="file" accept=".png,.jpg,.jpeg" className="mt-1 block text-xs" onChange={(e) => setFile(e.target.files?.[0] ?? null)} disabled={!canSave} />
+            Picture or animation (optional: PNG, JPG, GIF, WEBP, SVGA, MP4)
+            <input type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.svga,.mp4" className="mt-1 block text-xs" onChange={(e) => setFile(e.target.files?.[0] ?? null)} disabled={!canSave} />
           </label>
           <Button variant="gold" busy={busy} disabled={!canSave || !name.trim()} onClick={() => void go()}>
             <Upload className="h-4 w-4" /> Add title
@@ -269,10 +270,10 @@ function Manage({ t, canSave, onChanged, onDeleted }: { t: Title; canSave: boole
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-gold">
-          <Upload className="h-4 w-4" /> {t.iconUrl ? "Change picture" : "Add picture"}
+          <Upload className="h-4 w-4" /> {t.iconUrl ? "Change picture / animation" : "Add picture / animation"}
           <input
             type="file"
-            accept=".png,.jpg,.jpeg"
+            accept=".png,.jpg,.jpeg,.gif,.webp,.svga,.mp4"
             className="sr-only"
             disabled={!canSave}
             onChange={(e) => {
