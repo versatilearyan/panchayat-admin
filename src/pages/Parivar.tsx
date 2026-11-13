@@ -11,6 +11,7 @@ import { Badge, Button, Card, Chips, Empty, ErrorNote, Loading, PageHeader, Togg
 import { NeedsBackend } from "../components/WalletParts";
 import { ConfigTable } from "../components/ConfigTable";
 import { LibraryIds, ParivarLibrary } from "../components/ParivarLibrary";
+import { ParivarChests } from "../components/ParivarChests";
 
 const base = "/api/v1/admin/parivar";
 
@@ -66,7 +67,7 @@ const SECS: { value: Sec; label: string }[] = [
   { value: "kavach", label: "Kavach" },
   { value: "gacha", label: "Gacha" },
   { value: "chests", label: "Chests" },
-  { value: "treasure", label: "Family Treasure" },
+  { value: "treasure", label: "Family Treasure chests" },
   { value: "library", label: "Parivar library" },
   { value: "shop", label: "Shop and cheer" },
   { value: "tasks", label: "Tasks and prizes" },
@@ -314,6 +315,9 @@ function Live() {
 
       {sec === "treasure" ? (
         <>
+          <ParivarChests canSettings={canSave} canRewards={can("gifts.manage")} />
+          <details className="mt-6 rounded-2xl border border-line bg-ink-2 px-4 py-3">
+            <summary className="cursor-pointer text-sm font-semibold text-muted">Advanced: the same lists as tables (add a new chest, edit everything at once)</summary>
           <ConfigTable
             section="treasure-tiers"
             title="Family Treasure chests (Normal, Advanced, Rare, Super)"
@@ -369,6 +373,7 @@ function Live() {
             ]}
             blank={{ kind: "BADGE", ref: 0, giftId: "", amount: 1, rarity: "COMMON", weight: 10, maxPerChest: 0, label: "New reward", imageUrl: "", active: true }}
           />
+          </details>
         </>
       ) : null}
 
@@ -779,6 +784,7 @@ const EXTRA_FIELDS: { key: string; label: string; type: "bool" | "int" | "enum";
   { key: "chatEnabled", label: "Family chat", type: "bool", group: "Feature switches" },
   { key: "voiceEnabled", label: "Parivar voice room", type: "bool", group: "Feature switches" },
   { key: "rankRewardsEnabled", label: "Weekly ranking prizes", type: "bool", group: "Feature switches" },
+  { key: "levelupSpendAll", label: "Level up uses ALL the family fund", type: "bool", group: "Feature switches", hint: "On: when the Mukhiya levels the Parivar up, the whole fund is used and starts again from 0. Off: only the price of the level is taken." },
   { key: "gachaTicketPrice", label: "Gacha ticket price (gold)", type: "int", group: "Limits", hint: "What one personal Gacha ticket costs. A roll with the player's own gold is set on each machine." },
   { key: "voiceMinLevel", label: "Voice room unlocks at level", type: "int", group: "Limits" },
   { key: "chestExpiryHours", label: "Chest stays open (hours)", type: "int", group: "Limits" },
