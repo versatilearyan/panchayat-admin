@@ -257,12 +257,13 @@ function Live() {
               { key: "giftId", label: "Gift ID", type: "text", width: "130px", hint: "GIFT_CARD only: which gift the card gives" },
               { key: "amount", label: "Amount", type: "int" },
               { key: "weight", label: "Weight", type: "int" },
+              { key: "validDays", label: "Valid days", type: "int", hint: "How many days a gift card or item lasts after it is won. 0 = never runs out (items: their own length)." },
               { key: "rarity", label: "Rarity", type: "enum", options: ["COMMON", "RARE", "EPIC", "LEGENDARY"] },
               { key: "label", label: "Label", type: "text" },
               { key: "imageUrl", label: "Image URL", type: "text", width: "160px" },
               { key: "active", label: "On", type: "bool" },
             ]}
-            blank={{ kind: "COINS", ref: 0, giftId: "", amount: 100, weight: 10, rarity: "COMMON", label: "100 gold", imageUrl: "", active: true }}
+            blank={{ kind: "COINS", ref: 0, giftId: "", amount: 100, weight: 10, validDays: 0, rarity: "COMMON", label: "100 gold", imageUrl: "", active: true }}
           />
         </>
       ) : null}
@@ -367,11 +368,12 @@ function Live() {
               { key: "rarity", label: "Rarity", type: "enum", options: ["COMMON", "PREMIUM", "EPIC", "LEGENDARY", "ULTRA_RARE"] },
               { key: "weight", label: "Weight", type: "int" },
               { key: "maxPerChest", label: "Limit/chest", type: "int" },
+              { key: "validDays", label: "Valid days", type: "int", hint: "How many days the winner keeps it. 0 = never runs out (frames and titles: 0 = their own length)." },
               { key: "label", label: "Label", type: "text" },
               { key: "imageUrl", label: "Image URL", type: "text", width: "160px" },
               { key: "active", label: "On", type: "bool" },
             ]}
-            blank={{ kind: "BADGE", ref: 0, giftId: "", amount: 1, rarity: "COMMON", weight: 10, maxPerChest: 0, label: "New reward", imageUrl: "", active: true }}
+            blank={{ kind: "BADGE", ref: 0, giftId: "", amount: 1, rarity: "COMMON", weight: 10, maxPerChest: 0, validDays: 0, label: "New reward", imageUrl: "", active: true }}
           />
           </details>
         </>

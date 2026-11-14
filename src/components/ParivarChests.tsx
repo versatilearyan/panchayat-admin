@@ -13,7 +13,7 @@ import { MediaPreview } from "./MediaParts";
 
 const base = "/api/v1/admin/parivar/treasure";
 type Tier = { id: number; code: string; name: string; enabled: boolean; weeklyTarget: number; unlockMinutes: number; poolCoins: number; poolDiamonds: number; drawsPerMember: number; eligibleMinHours: number; imageUrl: string | null; rewards: number; live: number };
-type Reward = { id: number; kind: string; ref: number; giftId: string | null; amount: number; rarity: string; weight: number; maxPerChest: number; label: string; active: boolean; imageUrl: string | null; format: string | null; giftName: string | null };
+type Reward = { id: number; kind: string; ref: number; giftId: string | null; amount: number; rarity: string; weight: number; maxPerChest: number; validDays: number; label: string; active: boolean; imageUrl: string | null; format: string | null; giftName: string | null };
 
 const RARITIES = [
   { v: "COMMON", t: "Common" },
@@ -139,7 +139,7 @@ function ChestModal({ tier, canSettings, canRewards, onChanged }: { tier: Tier; 
       ) : (
         <ul className="space-y-2">
           {rewards.map((r) => (
-            <RewardRow key={`${r.id}:${r.weight}:${r.rarity}:${r.active}:${r.label}:${r.amount}:${r.maxPerChest}`} r={r} gift={r.giftId ? giftById.get(r.giftId) : undefined} share={r.active && total ? (r.weight / total) * 100 : 0} canEdit={canRewards} onChanged={load} toast={toast} />
+            <RewardRow key={`${r.id}:${r.weight}:${r.rarity}:${r.active}:${r.label}:${r.amount}:${r.maxPerChest}:${r.validDays}`} r={r} gift={r.giftId ? giftById.get(r.giftId) : undefined} share={r.active && total ? (r.weight / total) * 100 : 0} canEdit={canRewards} onChanged={load} toast={toast} />
           ))}
         </ul>
       )}
@@ -260,9 +260,10 @@ function RewardRow({ r, gift, share, canEdit, onChanged, toast }: { r: Reward; g
   const [weight, setWeight] = useState(String(r.weight));
   const [max, setMax] = useState(String(r.maxPerChest));
   const [amount, setAmount] = useState(String(r.amount));
+  const [days, setDays] = useState(String(r.validDays));
   const [active, setActive] = useState(r.active);
   const [busy, setBusy] = useState(false);
-  const dirty = label !== r.label || rarity !== r.rarity || Number(weight || 0) !== r.weight || Number(max || 0) !== r.maxPerChest || Number(amount || 0) !== r.amount || active !== r.active;
+  const dirty = label !== r.label || rarity !== r.rarity || Number(weight || 0) !== r.weight || Number(max || 0) !== r.maxPerChest || Number(amount || 0) !== r.amount || Number(days || 0) !== r.validDays || active !== r.active;
 
   const run = async (f: () => Promise<unknown>, done: string) => {
     setBusy(true);
@@ -298,17 +299,25 @@ function RewardRow({ r, gift, share, canEdit, onChanged, toast }: { r: Reward; g
         Chance
         <Num label="Chance" value={weight} onChange={setWeight} disabled={!canEdit} w="w-20" />
       </label>
-      <label className="text-[11px] font-semibold text-muted">
-        {r.kind === "VIP_CARD" ? "Days" : "Amount"}
-        <Num label="Amount" value={amount} onChange={setAmount} disabled={!canEdit} w="w-20" />
-      </label>
+      {r.kind === "GIFT" || r.kind === "VIP_CARD" ? (
+        <label className="text-[11px] font-semibold text-muted">
+          {r.kind === "VIP_CARD" ? "VIP days" : "How many"}
+          <Num label="Amount" value={amount} onChange={setAmount} disabled={!canEdit} w="w-20" />
+        </label>
+      ) : null}
+      {r.kind !== "VIP_CARD" ? (
+        <label className="text-[11px] font-semibold text-muted" title="How many days the winner keeps it. 0 = never runs out (or the item's own length).">
+          Valid days
+          <Num label="Valid days" value={days} onChange={setDays} disabled={!canEdit} w="w-20" />
+        </label>
+      ) : null}
       <label className="text-[11px] font-semibold text-muted">
         Limit
         <Num label="Limit per chest" value={max} onChange={setMax} disabled={!canEdit} w="w-20" />
       </label>
       <Toggle checked={active} onChange={setActive} label="On" disabled={!canEdit} />
       {dirty ? (
-        <Button size="sm" variant="gold" busy={busy} disabled={!canEdit} onClick={() => void run(() => apiRequest(`${base}/rewards/${r.id}`, { method: "PUT", body: { label, rarity, weight: Number(weight || 1), maxPerChest: Number(max || 0), amount: Number(amount || 0), active } }), "Saved")}>
+        <Button size="sm" variant="gold" busy={busy} disabled={!canEdit} onClick={() => void run(() => apiRequest(`${base}/rewards/${r.id}`, { method: "PUT", body: { label, rarity, weight: Number(weight || 1), maxPerChest: Number(max || 0), amount: Number(amount || 0), validDays: Number(days || 0), active } }), "Saved")}>
           <Save className="h-3.5 w-3.5" /> Save
         </Button>
       ) : null}
@@ -320,7 +329,7 @@ function RewardRow({ r, gift, share, canEdit, onChanged, toast }: { r: Reward; g
 }
 
 /** The shared "how often, how rare" boxes under the add panels. */
-function Common({ rarity, setRarity, weight, setWeight, max, setMax }: { rarity: string; setRarity: (v: string) => void; weight: string; setWeight: (v: string) => void; max: string; setMax: (v: string) => void }) {
+function Common({ rarity, setRarity, weight, setWeight, max, setMax, days, setDays, daysLabel = "Valid for (days, 0 = never runs out)" }: { rarity: string; setRarity: (v: string) => void; weight: string; setWeight: (v: string) => void; max: string; setMax: (v: string) => void; days?: string; setDays?: (v: string) => void; daysLabel?: string }) {
   return (
     <div className="flex flex-wrap items-end gap-3">
       <label className="text-xs font-semibold text-muted">
@@ -345,6 +354,14 @@ function Common({ rarity, setRarity, weight, setWeight, max, setMax }: { rarity:
           <Num label="Limit per chest" value={max} onChange={setMax} />
         </div>
       </label>
+      {setDays ? (
+        <label className="text-xs font-semibold text-muted">
+          {daysLabel}
+          <div className="mt-1">
+            <Num label="Valid days" value={days ?? "0"} onChange={setDays} />
+          </div>
+        </label>
+      ) : null}
     </div>
   );
 }
@@ -357,13 +374,14 @@ function AddGifts({ tierId, gifts, onDone }: { tierId: number; gifts: GiftItem[]
   const [rarity, setRarity] = useState("COMMON");
   const [weight, setWeight] = useState("10");
   const [max, setMax] = useState("0");
+  const [days, setDays] = useState("0");
   const [busy, setBusy] = useState(false);
   const list = gifts.filter((g) => !q.trim() || g.name.toLowerCase().includes(q.trim().toLowerCase()));
 
   const add = async () => {
     setBusy(true);
     try {
-      for (const id of picked) await apiRequest(`${base}/${tierId}/rewards`, { method: "POST", body: { kind: "GIFT", giftId: id, amount: Number(amount || 1), rarity, weight: Number(weight || 1), maxPerChest: Number(max || 0) } });
+      for (const id of picked) await apiRequest(`${base}/${tierId}/rewards`, { method: "POST", body: { kind: "GIFT", giftId: id, amount: Number(amount || 1), rarity, weight: Number(weight || 1), maxPerChest: Number(max || 0), validDays: Number(days || 0) } });
       toast(picked.length === 1 ? "Gift added to the chest" : `${picked.length} gifts added to the chest`);
       onDone();
     } catch (e) {
@@ -399,7 +417,7 @@ function AddGifts({ tierId, gifts, onDone }: { tierId: number; gifts: GiftItem[]
               <Num label="Amount" value={amount} onChange={setAmount} />
             </div>
           </label>
-          <Common rarity={rarity} setRarity={setRarity} weight={weight} setWeight={setWeight} max={max} setMax={setMax} />
+          <Common rarity={rarity} setRarity={setRarity} weight={weight} setWeight={setWeight} max={max} setMax={setMax} days={days} setDays={setDays} daysLabel="Gift runs out after (days, 0 = never)" />
         </div>
         <Button variant="gold" busy={busy} disabled={!picked.length} onClick={() => void add()}>
           <Plus className="h-4 w-4" /> Add {picked.length ? picked.length : ""} gift{picked.length === 1 ? "" : "s"} to the chest
@@ -416,6 +434,7 @@ function UploadRewards({ tierId, onDone }: { tierId: number; onDone: () => void 
   const [rarity, setRarity] = useState("COMMON");
   const [weight, setWeight] = useState("10");
   const [max, setMax] = useState("0");
+  const [days, setDays] = useState("0");
   const [busy, setBusy] = useState(false);
 
   const go = async () => {
@@ -427,6 +446,7 @@ function UploadRewards({ tierId, onDone }: { tierId: number; onDone: () => void 
       form.append("rarity", rarity);
       form.append("weight", weight || "1");
       form.append("maxPerChest", max || "0");
+      form.append("validDays", days || "0");
       await apiUpload(`${base}/${tierId}/rewards/upload`, form).promise;
       toast(files.length === 1 ? "Added to the chest" : `${files.length} rewards added to the chest`);
       onDone();
@@ -447,7 +467,7 @@ function UploadRewards({ tierId, onDone }: { tierId: number; onDone: () => void 
             <input className="field mt-1 h-9 w-full py-1" maxLength={60} value={label} onChange={(e) => setLabel(e.target.value)} />
           </label>
         ) : null}
-        <Common rarity={rarity} setRarity={setRarity} weight={weight} setWeight={setWeight} max={max} setMax={setMax} />
+        <Common rarity={rarity} setRarity={setRarity} weight={weight} setWeight={setWeight} max={max} setMax={setMax} days={days} setDays={setDays} daysLabel="Winner keeps it for (days, 0 = forever)" />
         <Button variant="gold" busy={busy} disabled={!files.length} onClick={() => void go()}>
           <Upload className="h-4 w-4" /> Upload {files.length > 1 ? `${files.length} files` : "and add"}
         </Button>
@@ -458,8 +478,8 @@ function UploadRewards({ tierId, onDone }: { tierId: number; onDone: () => void 
 
 const OTHER_KINDS: { v: string; t: string; id?: string; hint: string }[] = [
   { v: "VIP_CARD", t: "VIP card", hint: "Amount = number of VIP days." },
-  { v: "ITEM", t: "Frame / chat bubble / entry effect", id: "Item ID (from Spend rewards)", hint: "Amount = days it lasts (0 = its own length)." },
-  { v: "PROFILE_TITLE", t: "Profile title", id: "Title ID (from Profile titles)", hint: "Amount = days it lasts (0 = the title's own time)." },
+  { v: "ITEM", t: "Frame / chat bubble / entry effect", id: "Item ID (from Spend rewards)", hint: "Set how many days it lasts below (0 = its own length)." },
+  { v: "PROFILE_TITLE", t: "Profile title", id: "Title ID (from Profile titles)", hint: "Set how many days it lasts below (0 = the title's own time)." },
   { v: "COLLECTIBLE", t: "Picture from the Parivar library", id: "Library item ID", hint: "Its name and picture come from the library." },
   { v: "BADGE", t: "Plain text badge", hint: "Shows in the profile collection with the name you type." },
   { v: "TITLE", t: "Plain text title", hint: "Shows in the profile collection with the name you type." },
@@ -474,13 +494,14 @@ function OtherReward({ tierId, onDone }: { tierId: number; onDone: () => void })
   const [rarity, setRarity] = useState("COMMON");
   const [weight, setWeight] = useState("10");
   const [max, setMax] = useState("0");
+  const [days, setDays] = useState("0");
   const [busy, setBusy] = useState(false);
   const k = OTHER_KINDS.find((x) => x.v === kind)!;
 
   const add = async () => {
     setBusy(true);
     try {
-      await apiRequest(`${base}/${tierId}/rewards`, { method: "POST", body: { kind, ref: Number(ref || 0), label, amount: Number(amount || 0), rarity, weight: Number(weight || 1), maxPerChest: Number(max || 0) } });
+      await apiRequest(`${base}/${tierId}/rewards`, { method: "POST", body: { kind, ref: Number(ref || 0), label, amount: kind === "ITEM" || kind === "PROFILE_TITLE" || kind === "COLLECTIBLE" || kind === "BADGE" || kind === "TITLE" ? 1 : Number(amount || 0), rarity, weight: Number(weight || 1), maxPerChest: Number(max || 0), validDays: kind === "VIP_CARD" ? 0 : Number(days || 0) } });
       toast("Reward added");
       onDone();
     } catch (e) {
@@ -523,7 +544,7 @@ function OtherReward({ tierId, onDone }: { tierId: number; onDone: () => void })
           </label>
         </div>
         <p className="text-xs text-muted">{k.hint}</p>
-        <Common rarity={rarity} setRarity={setRarity} weight={weight} setWeight={setWeight} max={max} setMax={setMax} />
+        <Common rarity={rarity} setRarity={setRarity} weight={weight} setWeight={setWeight} max={max} setMax={setMax} days={kind === "VIP_CARD" ? undefined : days} setDays={kind === "VIP_CARD" ? undefined : setDays} daysLabel={kind === "ITEM" || kind === "PROFILE_TITLE" ? "Lasts (days, 0 = its own length)" : "Winner keeps it for (days, 0 = forever)"} />
         <Button variant="gold" busy={busy} disabled={!label.trim()} onClick={() => void add()}>
           <Plus className="h-4 w-4" /> Add to the chest
         </Button>
