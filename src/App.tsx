@@ -31,6 +31,7 @@ import { VipCosmeticsPage } from "./pages/VipCosmetics";
 import { VipPlansPage } from "./pages/VipPlans";
 import { CpRingsPage } from "./pages/CpRings";
 import { CpCouplesPage } from "./pages/CpCouples";
+import { RoomTreasurePage } from "./pages/RoomTreasure";
 import { ParivarPage } from "./pages/Parivar";
 import { StaffPage } from "./pages/Staff";
 import { SettingsPage } from "./pages/Settings";
@@ -97,6 +98,7 @@ const NAV: { page: Page; label: string; icon: typeof Users; child?: boolean }[] 
   { page: "pricing", label: "Pricing", icon: IndianRupee },
   { page: "visitorPlans", label: "Visitor log", icon: Eye, child: true },
   { page: "dailyTasks", label: "Daily tasks", icon: ListChecks },
+  { page: "roomTreasure", label: "Room treasure", icon: Gem, child: true },
   { page: "sarpanch", label: "Sarpanch", icon: Landmark },
   { page: "parivar", label: "Parivar", icon: UsersRound },
   { page: "titles", label: "Profile titles", icon: Tag },
@@ -131,6 +133,7 @@ const PAGE_VIEW: Record<Page, ComponentType> = {
   pricing: PricingPage,
   visitorPlans: VisitorPlansPage,
   dailyTasks: DailyTasksPage,
+  roomTreasure: RoomTreasurePage,
   sarpanch: SarpanchPage,
   parivar: ParivarPage,
   titles: ProfileTitlesPage,
