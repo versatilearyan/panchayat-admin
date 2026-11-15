@@ -12,7 +12,7 @@ import { Badge, Button, Card, Empty, ErrorNote, Loading, Modal, Toggle, fmtCoins
 import { MediaPreview } from "./MediaParts";
 
 const base = "/api/v1/admin/parivar/treasure";
-type Tier = { id: number; code: string; name: string; enabled: boolean; weeklyTarget: number; unlockMinutes: number; poolCoins: number; poolDiamonds: number; drawsPerMember: number; eligibleMinHours: number; imageUrl: string | null; rewards: number; live: number };
+type Tier = { id: number; code: string; name: string; enabled: boolean; weeklyTarget: number; unlockMinutes: number; skipCoinsPerMinute: number; poolCoins: number; poolDiamonds: number; drawsPerMember: number; eligibleMinHours: number; imageUrl: string | null; rewards: number; live: number };
 type Reward = { id: number; kind: string; ref: number; giftId: string | null; amount: number; rarity: string; weight: number; maxPerChest: number; validDays: number; label: string; active: boolean; imageUrl: string | null; format: string | null; giftName: string | null };
 
 const RARITIES = [
@@ -157,6 +157,7 @@ function Settings({ tier, canSettings, canPicture, onSaved }: { tier: Tier; canS
     enabled: tier.enabled,
     weeklyTarget: String(tier.weeklyTarget),
     unlockMinutes: String(tier.unlockMinutes),
+    skipCoinsPerMinute: String(tier.skipCoinsPerMinute ?? 0),
     poolCoins: String(tier.poolCoins),
     poolDiamonds: String(tier.poolDiamonds),
     drawsPerMember: String(tier.drawsPerMember),
@@ -174,7 +175,7 @@ function Settings({ tier, canSettings, canPicture, onSaved }: { tier: Tier; canS
     try {
       await apiRequest(`${base}/tiers/${tier.id}`, {
         method: "PUT",
-        body: { name: f.name, enabled: f.enabled, weeklyTarget: n(f.weeklyTarget), unlockMinutes: n(f.unlockMinutes), poolCoins: n(f.poolCoins), poolDiamonds: n(f.poolDiamonds), drawsPerMember: n(f.drawsPerMember), eligibleMinHours: n(f.eligibleMinHours) },
+        body: { name: f.name, enabled: f.enabled, weeklyTarget: n(f.weeklyTarget), unlockMinutes: n(f.unlockMinutes), skipCoinsPerMinute: n(f.skipCoinsPerMinute), poolCoins: n(f.poolCoins), poolDiamonds: n(f.poolDiamonds), drawsPerMember: n(f.drawsPerMember), eligibleMinHours: n(f.eligibleMinHours) },
       });
       toast("Chest saved");
       await onSaved();
@@ -231,6 +232,7 @@ function Settings({ tier, canSettings, canPicture, onSaved }: { tier: Tier; canS
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {field("Weekly activity needed", "weeklyTarget", "Earned once a week")}
           {field("Unlock time (minutes)", "unlockMinutes", "Between claim and send")}
+          {field("Open-now price (coins per minute left)", "skipCoinsPerMinute", "0 = not offered. Members pay this for every minute still left to open the chest at once")}
           {field("Coin pool", "poolCoins", "Shared by luck")}
           {field("Diamond pool", "poolDiamonds", "Shared by luck")}
           {field("Draws per member", "drawsPerMember", "Item draws each")}

@@ -220,7 +220,7 @@ function Live() {
             section="gacha-machines"
             title="Gacha machines"
             canSave={canSave}
-            note="Each person gets the free rolls per day: the Parivar fund pays the machine fee for it. After that a roll uses the person's own Gacha ticket, else their own gold (roll price). Normal opens at level 1, Advanced at the level you set (4)."
+            note="Each person gets the free rolls per day: the Parivar fund pays the machine fee for it. After that a roll uses the person's own Gacha ticket, else their own gold (roll price). Normal opens at level 1, Advanced at the level you set (4), Super at its level (8). Once a Parivar reaches the next machine's level, the plainer machine goes away for it (Normal is hidden from level 4, Advanced from level 8) and only the best one is shown."
             cols={[
               { key: "name", label: "Name", type: "text" },
               { key: "tier", label: "Tier", type: "text", width: "100px" },
