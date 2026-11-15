@@ -31,7 +31,17 @@ type Item = {
   createdAt: string;
 };
 type Page = { total: number; page: number; size: number; waiting: number; items: Item[] };
-type Settings = { enabled: boolean; upiId: string | null; payeeName: string | null; qrUrl: string | null; note: string | null };
+type Settings = { enabled: boolean; name: string; upiId: string | null; payeeName: string | null; qrUrl: string | null; note: string | null };
+type Revenue = {
+  range: string;
+  count: number;
+  rupees: number;
+  coins: number;
+  byDay: { day: string; count: number; rupees: number; coins: number }[];
+  byPack: { pack: string; count: number; rupees: number; coins: number }[];
+  waitingCount: number;
+  waitingRupees: number;
+};
 const base = "/api/v1/admin/manage/manual-topups";
 const SIZE = 20;
 const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) : "");
@@ -45,7 +55,8 @@ export function ManualTopupsPage() {
 function Live() {
   return (
     <>
-      <PageHeader title="Manual top-ups (Mukhiya ji)" sub="People who couldn't pay with the gateway pay your UPI ID and send the transaction ID. Check it in your bank, then approve." />
+      <PageHeader title="Manual top-ups" sub="People who couldn't pay with the gateway pay your UPI ID and send the transaction ID. Check it in your bank, then approve." />
+      <RevenueCard />
       <SettingsCard />
       <Requests />
     </>
@@ -55,20 +66,20 @@ function Live() {
 function SettingsCard() {
   const { toast } = useAdmin();
   const [saved, setSaved] = useState<Settings | null>(null);
-  const [f, setF] = useState({ enabled: false, upiId: "", payeeName: "", note: "" });
+  const [f, setF] = useState({ enabled: false, upiId: "", payeeName: "", note: "", name: "Mukhiya ji" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const qrInput = useRef<HTMLInputElement>(null);
 
   const apply = (s: Settings) => {
     setSaved(s);
-    setF({ enabled: s.enabled, upiId: s.upiId ?? "", payeeName: s.payeeName ?? "", note: s.note ?? "" });
+    setF({ enabled: s.enabled, upiId: s.upiId ?? "", payeeName: s.payeeName ?? "", note: s.note ?? "", name: s.name });
   };
   useEffect(() => {
     apiRequest<Settings>(`${base}/settings`).then(apply).catch((e) => setError(e instanceof Error ? e.message : "Couldn't load the settings."));
   }, []);
 
-  const dirty = saved !== null && (saved.enabled !== f.enabled || (saved.upiId ?? "") !== f.upiId || (saved.payeeName ?? "") !== f.payeeName || (saved.note ?? "") !== f.note);
+  const dirty = saved !== null && (saved.enabled !== f.enabled || (saved.upiId ?? "") !== f.upiId || (saved.payeeName ?? "") !== f.payeeName || (saved.note ?? "") !== f.note || saved.name !== f.name);
   const save = async () => {
     setBusy(true);
     try {
@@ -105,7 +116,12 @@ function SettingsCard() {
         <Loading />
       ) : (
         <div className="space-y-4 p-4">
-          <Toggle checked={f.enabled} onChange={(v) => setF((x) => ({ ...x, enabled: v }))} label="Allow paying Mukhiya ji by UPI" hint="Users see 'Pay Mukhiya ji by UPI' in the wallet, in checkout and in the Mukhiya ji chat. Never shown in the Google Play build." />
+          <Toggle checked={f.enabled} onChange={(v) => setF((x) => ({ ...x, enabled: v }))} label={`Allow paying ${f.name || "Mukhiya ji"} by UPI`} hint="Users see this option in the wallet, in checkout and in the chat. Never shown in the Google Play build." />
+          <label className="block text-sm font-semibold">
+            Name people see (for example Mukhiya ji, Munshi ji)
+            <input className="field mt-1 max-w-[280px]" maxLength={40} value={f.name} onChange={(e) => setF((x) => ({ ...x, name: e.target.value }))} />
+            <span className="mt-1 block text-xs font-normal text-muted">Used in the buttons, the payment steps and the automated chat messages.</span>
+          </label>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block text-sm font-semibold">
               UPI ID
@@ -136,6 +152,137 @@ function SettingsCard() {
           <Button variant="primary" busy={busy} disabled={!dirty} onClick={() => void save()}>
             Save
           </Button>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function RevenueCard() {
+  const { version } = useAdmin();
+  const [range, setRange] = useState<"today" | "7d" | "30d" | "month" | "all">("30d");
+  const [data, setData] = useState<Revenue | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    apiRequest<Revenue>(`${base}/revenue?range=${range}`)
+      .then((r) => {
+        if (live) {
+          setData(r);
+          setError(null);
+        }
+      })
+      .catch((e) => live && setError(e instanceof Error ? e.message : "Couldn't load the revenue."));
+    return () => {
+      live = false;
+    };
+  }, [range, version]);
+
+  const csv = () => {
+    if (!data) return;
+    const lines = ["Day,Top-ups,Rupees,Coins", ...data.byDay.map((d) => `${d.day},${d.count},${d.rupees},${d.coins}`), "", "Pack,Top-ups,Rupees,Coins", ...data.byPack.map((p) => `"${p.pack.replace(/"/g, '""')}",${p.count},${p.rupees},${p.coins}`)];
+    const url = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `manual-topups-${range}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  const tile = (label: string, value: string, sub?: string) => (
+    <div className="rounded-xl bg-cream/[0.05] p-3">
+      <p className="text-xs text-muted">{label}</p>
+      <p className="mt-0.5 font-display text-xl font-bold">{value}</p>
+      {sub ? <p className="text-xs text-muted">{sub}</p> : null}
+    </div>
+  );
+
+  return (
+    <Card
+      title="Revenue from manual top-ups"
+      action={
+        <Button size="sm" disabled={!data || !data.count} onClick={csv}>
+          Download CSV
+        </Button>
+      }
+    >
+      <div className="px-4 pt-3">
+        <Chips
+          label="Period"
+          value={range}
+          onChange={setRange}
+          options={[
+            { value: "today", label: "Today" },
+            { value: "7d", label: "Last 7 days" },
+            { value: "30d", label: "Last 30 days" },
+            { value: "month", label: "This month" },
+            { value: "all", label: "All time" },
+          ]}
+        />
+      </div>
+      {error ? <ErrorNote>{error}</ErrorNote> : null}
+      {!data ? (
+        <Loading />
+      ) : (
+        <div className="space-y-4 p-4">
+          <div className="grid gap-3 sm:grid-cols-4">
+            {tile("Collected (approved)", inr(data.rupees), `${data.count} top-up${data.count === 1 ? "" : "s"}`)}
+            {tile("Coins given", fmtCoins(data.coins))}
+            {tile("Average top-up", data.count ? inr(Math.round(data.rupees / data.count)) : "-")}
+            {tile("Waiting for you", inr(data.waitingRupees), `${data.waitingCount} not checked yet`)}
+          </div>
+          {!data.count ? (
+            <Empty>No approved top-ups in this period.</Empty>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div>
+                <p className="mb-1 text-xs font-bold uppercase tracking-wide text-muted">By day</p>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-muted">
+                      <th className="py-1 font-semibold">Day</th>
+                      <th className="py-1 text-right font-semibold">Top-ups</th>
+                      <th className="py-1 text-right font-semibold">Rupees</th>
+                      <th className="py-1 text-right font-semibold">Coins</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.byDay.slice(0, 31).map((d) => (
+                      <tr key={d.day} className="border-t border-line">
+                        <td className="py-1.5">{new Date(d.day + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</td>
+                        <td className="py-1.5 text-right">{d.count}</td>
+                        <td className="py-1.5 text-right font-semibold">{inr(d.rupees)}</td>
+                        <td className="py-1.5 text-right text-muted">{fmtCoins(d.coins)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div>
+                <p className="mb-1 text-xs font-bold uppercase tracking-wide text-muted">By pack</p>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-muted">
+                      <th className="py-1 font-semibold">Pack</th>
+                      <th className="py-1 text-right font-semibold">Top-ups</th>
+                      <th className="py-1 text-right font-semibold">Rupees</th>
+                      <th className="py-1 text-right font-semibold">Coins</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.byPack.map((p) => (
+                      <tr key={p.pack} className="border-t border-line">
+                        <td className="py-1.5">{p.pack}</td>
+                        <td className="py-1.5 text-right">{p.count}</td>
+                        <td className="py-1.5 text-right font-semibold">{inr(p.rupees)}</td>
+                        <td className="py-1.5 text-right text-muted">{fmtCoins(p.coins)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+          <p className="text-xs text-muted">Only approved top-ups are counted, by the day they were approved (India time). Gateway payments are in Revenue, not here.</p>
         </div>
       )}
     </Card>
