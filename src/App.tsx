@@ -30,6 +30,7 @@ import { VipPage } from "./pages/Vip";
 import { VipCosmeticsPage } from "./pages/VipCosmetics";
 import { VipPlansPage } from "./pages/VipPlans";
 import { CpRingsPage } from "./pages/CpRings";
+import { CpCouplesPage } from "./pages/CpCouples";
 import { ParivarPage } from "./pages/Parivar";
 import { StaffPage } from "./pages/Staff";
 import { SettingsPage } from "./pages/Settings";
@@ -80,6 +81,7 @@ const NAV: { page: Page; label: string; icon: typeof Users; child?: boolean }[] 
   { page: "reports", label: "Reports", icon: Flag },
   { page: "gifts", label: "Gifts", icon: Gift },
   { page: "shop", label: "Shop items", icon: ShoppingBag },
+  { page: "cpCouples", label: "CP couples", icon: Gem, child: true },
   { page: "cpRings", label: "CP ring charm", icon: Gem, child: true },
   { page: "coinPacks", label: "Coin packs", icon: Coins },
   { page: "rewards", label: "Spend rewards", icon: Dice5, child: true },
@@ -118,6 +120,7 @@ const PAGE_VIEW: Record<Page, ComponentType> = {
   coinLogs: CoinLogsPage,
   audit: AuditLogPage,
   shop: ShopPage,
+  cpCouples: CpCouplesPage,
   cpRings: CpRingsPage,
   coinPacks: CoinPacksPage,
   redPackets: RedPacketsPage,
