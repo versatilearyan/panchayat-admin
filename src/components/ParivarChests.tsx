@@ -315,7 +315,7 @@ function RewardRow({ r, gift, share, canEdit, onChanged, toast }: { r: Reward; g
         Limit
         <Num label="Limit per chest" value={max} onChange={setMax} disabled={!canEdit} w="w-20" />
       </label>
-      <Toggle checked={active} onChange={setActive} label="On" disabled={!canEdit} />
+      <Toggle checked={active} onChange={(v) => { setActive(v); void run(() => apiRequest(`${base}/rewards/${r.id}`, { method: "PUT", body: { active: v } }), v ? "Turned on" : "Turned off - it will not come out of this chest any more"); }} label="On" disabled={!canEdit || busy} />
       {dirty ? (
         <Button size="sm" variant="gold" busy={busy} disabled={!canEdit} onClick={() => void run(() => apiRequest(`${base}/rewards/${r.id}`, { method: "PUT", body: { label, rarity, weight: Number(weight || 1), maxPerChest: Number(max || 0), amount: Number(amount || 0), validDays: Number(days || 0), active } }), "Saved")}>
           <Save className="h-3.5 w-3.5" /> Save
