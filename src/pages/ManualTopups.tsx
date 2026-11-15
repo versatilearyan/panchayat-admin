@@ -31,7 +31,7 @@ type Item = {
   createdAt: string;
 };
 type Page = { total: number; page: number; size: number; waiting: number; items: Item[] };
-type Settings = { enabled: boolean; name: string; upiId: string | null; payeeName: string | null; qrUrl: string | null; note: string | null };
+type Settings = { enabled: boolean; name: string; avatarUrl?: string | null; upiId: string | null; payeeName: string | null; qrUrl: string | null; note: string | null };
 type Revenue = {
   range: string;
   count: number;
@@ -70,6 +70,7 @@ function SettingsCard() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const qrInput = useRef<HTMLInputElement>(null);
+  const avatarInput = useRef<HTMLInputElement>(null);
 
   const apply = (s: Settings) => {
     setSaved(s);
@@ -90,6 +91,22 @@ function SettingsCard() {
       toast(e instanceof Error ? e.message : "Couldn't save", "error");
     } finally {
       setBusy(false);
+    }
+  };
+  const uploadAvatar = async (file?: File) => {
+    if (!file) return;
+    const form = new FormData();
+    form.append("file", file);
+    setBusy(true);
+    try {
+      await apiUpload<Settings>(`${base}/settings/avatar`, form).promise;
+      apply(await apiRequest<Settings>(`${base}/settings`));
+      toast("Picture saved");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Couldn't upload", "error");
+    } finally {
+      setBusy(false);
+      if (avatarInput.current) avatarInput.current.value = "";
     }
   };
   const uploadQr = async (file?: File) => {
@@ -120,8 +137,22 @@ function SettingsCard() {
           <label className="block text-sm font-semibold">
             Name people see (for example Mukhiya ji, Munshi ji)
             <input className="field mt-1 max-w-[280px]" maxLength={40} value={f.name} onChange={(e) => setF((x) => ({ ...x, name: e.target.value }))} />
-            <span className="mt-1 block text-xs font-normal text-muted">Used in the buttons, the payment steps and the automated chat messages.</span>
+            <span className="mt-1 block text-xs font-normal text-muted">This is the name of the payments desk account: in the chat list, its chat, the buttons and the payment steps. All payment messages come from it (Sarpanch no longer sends them).</span>
           </label>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-full bg-cream/10 text-lg font-bold">
+              {saved?.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={mediaHref(saved.avatarUrl) ?? saved.avatarUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                (f.name || "M").charAt(0)
+              )}
+            </span>
+            <input ref={avatarInput} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => void uploadAvatar(e.target.files?.[0])} />
+            <Button size="sm" busy={busy} onClick={() => avatarInput.current?.click()}>
+              {saved?.avatarUrl ? "Change the account picture" : "Upload the account picture"}
+            </Button>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block text-sm font-semibold">
               UPI ID
