@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { adminApi, type AppSettings } from "../api";
 import { useAdmin } from "../context";
+import { BACKEND_ENABLED } from "../config/api";
+import { apiRequest } from "../lib/api";
 import { Button, Card, ErrorNote, Loading, NumberField, PageHeader, timeAgo, Toggle, useLoad } from "../components/ui";
 
 type Draft = Omit<AppSettings, "updatedAt" | "updatedBy">;
@@ -14,6 +16,7 @@ export function SettingsPage() {
       <PageHeader title="App settings" sub="Switches that change the Panchayat app for everyone." />
       {error ? <ErrorNote>{error}</ErrorNote> : null}
       {data ? <SettingsForm key={data.updatedAt} settings={data} /> : <Loading />}
+      {BACKEND_ENABLED ? <MoveFromCloudinary /> : null}
     </>
   );
 }
@@ -122,5 +125,83 @@ function SettingsForm({ settings }: { settings: AppSettings }) {
         </div>
       </div>
     </div>
+  );
+}
+
+type Move = { running: boolean; phase: string; found: number; moved: number; failed: number; rowsUpdated: number; embeddedLeft: number; startedAt: string | null; finishedAt: string | null; startedBy: string | null; errors: string[] };
+const moveBase = "/api/v1/admin/manage/storage/cloudinary";
+
+/** Copies every picture still on Cloudinary onto this server (Super Admin). */
+function MoveFromCloudinary() {
+  const { session, toast } = useAdmin();
+  const [st, setSt] = useState<Move | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const timer = useRef<number | null>(null);
+  const isSuper = session.role === "super_admin";
+
+  const poll = useCallback(async () => {
+    try {
+      const s = await apiRequest<Move>(`${moveBase}/status`);
+      setSt(s);
+      setNote(null);
+      return s;
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : "Couldn't read the progress.");
+      return null;
+    }
+  }, []);
+  useEffect(() => {
+    if (!isSuper) return;
+    void poll();
+  }, [isSuper, poll]);
+  useEffect(() => {
+    if (!st?.running) return;
+    timer.current = window.setInterval(() => void poll(), 2000);
+    return () => {
+      if (timer.current) window.clearInterval(timer.current);
+    };
+  }, [st?.running, poll]);
+
+  if (!isSuper) return null;
+  const start = async () => {
+    if (!window.confirm("Copy every picture that is still on Cloudinary onto this server? It runs in the background and can take a while. It is safe to run again.")) return;
+    try {
+      const s = await apiRequest<Move & { started: boolean }>(`${moveBase}/move`, { method: "POST" });
+      setSt(s);
+      toast(s.started ? "Started" : "Already running");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Couldn't start", "error");
+    }
+  };
+
+  return (
+    <Card title="Pictures on Cloudinary" className="mt-5">
+      <div className="space-y-3 px-4 py-4">
+        <p className="text-sm text-muted">New pictures (profile photos, banners, wallpapers, room covers, shop and wallet images, VIP cosmetics) are already kept on this server. Use this to copy the older ones that are still on Cloudinary, one time. Every place that used the old link is updated to the copy.</p>
+        {note ? <ErrorNote>{note}</ErrorNote> : null}
+        <Button variant="primary" busy={Boolean(st?.running)} disabled={Boolean(st?.running)} onClick={() => void start()}>
+          {st?.running ? "Moving…" : "Move to this server"}
+        </Button>
+        {st && (st.running || st.finishedAt) ? (
+          <div className="rounded-xl bg-cream/[0.04] p-3 text-sm">
+            <p className="font-semibold">{st.running ? `Working: ${st.phase}` : st.phase === "done" ? "Finished" : st.phase}</p>
+            <p className="mt-1 text-muted">
+              Found {st.found} · copied {st.moved} · could not copy {st.failed} · rows updated {st.rowsUpdated}
+              {st.embeddedLeft ? ` · ${st.embeddedLeft} values with a Cloudinary link inside longer text were left as they are` : ""}
+            </p>
+            {st.errors.length ? (
+              <details className="mt-2 text-xs text-muted">
+                <summary className="cursor-pointer">First {st.errors.length} problems (a 404 means Cloudinary no longer has that file)</summary>
+                <ul className="mt-1 space-y-1 break-all">
+                  {st.errors.map((e) => (
+                    <li key={e}>{e}</li>
+                  ))}
+                </ul>
+              </details>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </Card>
   );
 }
