@@ -559,7 +559,7 @@ function LuckyCard() {
   );
 }
 
-type TagRules = { baseSlots: number; maxSlots: number; slotPrice: number; vipBonus: boolean };
+type TagRules = { baseSlots: number; maxSlots: number; slotPrice: number; vipBonus: boolean; unlimited: boolean };
 
 /** BFF tags: how many tags a person can hold, and what opening an extra slot costs in coins. Everyone can hold many tags of the same type. */
 function TagSlotsCard() {
@@ -594,7 +594,10 @@ function TagSlotsCard() {
     <Card title="BFF tag slots" className="mb-4">
       <div className="p-4">
         <p className="text-sm text-muted">A person can hold many BFF tags, even several of the same type (Confidant, Apprentice, Sibling, Bro and sis, Brothers), each with a different person. Every tag uses one slot.</p>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div className="mt-4">
+          <Toggle checked={v.unlimited} onChange={(on) => setV({ ...v, unlimited: on })} label="Unlimited BFF tags" hint="On: nobody runs out of slots, so the limits below don't apply and nothing is sold. Off: the slot rules below are used." />
+        </div>
+        <div className={`mt-4 grid gap-4 sm:grid-cols-2 ${v.unlimited ? "pointer-events-none opacity-40" : ""}`}>
           {num("baseSlots", "Free slots for everyone", "How many tags everyone can hold without paying.")}
           {num("maxSlots", "Most slots a person can have", "Free, bought and VIP slots together never go above this.")}
           {num("slotPrice", "Price of one extra slot (coins)", "Paid from the person's wallet when they open a slot. 0 = free.")}
