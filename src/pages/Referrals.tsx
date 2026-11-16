@@ -11,7 +11,7 @@ import { apiRequest } from "../lib/api";
 import { Button, Card, Empty, ErrorNote, Loading, NumberField, PageHeader, Toggle, fmtCoins } from "../components/ui";
 import { NeedsBackend } from "../components/WalletParts";
 
-type Settings = { enabled: boolean; reward: number; welcomeGift: number; maxWelcomePerNetwork: number; blockSameNetworkGifts: boolean };
+type Settings = { enabled: boolean; reward: number; welcomeGift: number; maxWelcomePerNetwork: number; blockSameNetworkGifts: boolean; oneAccountPerDevice: boolean };
 type Stats = { total: number; today: number; week: number; coinsPaid: number; inviters: number };
 type Top = { userId: string; publicId: string; name: string; friends: number; earned: number };
 type Overview = { settings: Settings; stats: Stats; top: Top[] };
@@ -92,7 +92,7 @@ function RatesCard({ settings, onSaved, toast }: { settings: Settings; onSaved: 
   const save = async () => {
     setBusy(true);
     try {
-      onSaved(await apiRequest<Overview>(`${base}/settings`, { method: "PUT", body: { enabled: f.enabled, reward: n(f.reward), welcomeGift: n(f.welcomeGift), maxWelcomePerNetwork: n(f.maxWelcomePerNetwork), blockSameNetworkGifts: f.blockSameNetworkGifts } }));
+      onSaved(await apiRequest<Overview>(`${base}/settings`, { method: "PUT", body: { enabled: f.enabled, reward: n(f.reward), welcomeGift: n(f.welcomeGift), maxWelcomePerNetwork: n(f.maxWelcomePerNetwork), blockSameNetworkGifts: f.blockSameNetworkGifts, oneAccountPerDevice: f.oneAccountPerDevice } }));
       toast("Saved. The app shows the new rates right away.");
     } catch (e) {
       toast(e instanceof Error ? e.message : "Couldn't save", "error");
@@ -141,6 +141,15 @@ function RatesCard({ settings, onSaved, toast }: { settings: Settings; onSaved: 
               />
             </div>
           </div>
+          <div className="mt-4">
+            <Toggle
+              checked={f.oneAccountPerDevice}
+              onChange={(v) => setF((x) => ({ ...x, oneAccountPerDevice: v }))}
+              label="One account per phone"
+              hint="Someone who tries to open a second account on a phone that already has one is told to delete the first account. Signing in to an account that already exists always works."
+            />
+            <FreePhone toast={toast} />
+          </div>
           <p className="mt-3 text-xs text-muted">A friend who joins from the inviter's own network, or from a network that already got its welcome gift, earns the inviter nothing.</p>
         </div>
         <Button variant="primary" busy={busy} disabled={!dirty} onClick={() => void save()}>
@@ -148,6 +157,35 @@ function RatesCard({ settings, onSaved, toast }: { settings: Settings; onSaved: 
         </Button>
       </div>
     </Card>
+  );
+}
+
+/** Someone who lost the account on their phone can't delete it: forget the phone for that account so they can open a new one. */
+function FreePhone({ toast }: { toast: Toast }) {
+  const [id, setId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const go = async () => {
+    setBusy(true);
+    try {
+      const r = await apiRequest<{ released: number }>(`${base}/release-device`, { method: "POST", body: { account: id.trim() } });
+      toast(r.released ? "Done. They can open a new account on that phone." : "That account isn't tied to a phone.");
+      if (r.released) setId("");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Couldn't do that", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="mt-3 flex flex-wrap items-end gap-3">
+      <label className="text-xs font-semibold text-muted">
+        Free a phone: the old account's ID
+        <input className="field mt-1 w-56" inputMode="numeric" placeholder="e.g. 2795913" value={id} onChange={(e) => setId(e.target.value.replace(/[^\d]/g, ""))} />
+      </label>
+      <Button size="sm" busy={busy} disabled={!id.trim()} onClick={() => void go()}>
+        Free this phone
+      </Button>
+    </div>
   );
 }
 
