@@ -11,12 +11,12 @@ import { apiRequest } from "../lib/api";
 import { Button, Card, Empty, ErrorNote, Loading, NumberField, PageHeader, Toggle, fmtCoins } from "../components/ui";
 import { NeedsBackend } from "../components/WalletParts";
 
-type Settings = { enabled: boolean; reward: number; welcomeGift: number };
+type Settings = { enabled: boolean; reward: number; welcomeGift: number; maxWelcomePerNetwork: number; blockSameNetworkGifts: boolean };
 type Stats = { total: number; today: number; week: number; coinsPaid: number; inviters: number };
 type Top = { userId: string; publicId: string; name: string; friends: number; earned: number };
 type Overview = { settings: Settings; stats: Stats; top: Top[] };
 type Person = { userId: string; publicId: string; name: string; email: string };
-type Row = { friend: Person; inviter: Person; joinedAt: string | null; accountCreatedAt: string | null; reward: number };
+type Row = { friend: Person; inviter: Person; joinedAt: string | null; accountCreatedAt: string | null; reward: number; note: string | null };
 type Listing = { total: number; page: number; size: number; items: Row[] };
 const base = "/api/v1/admin/manage/referrals";
 const SIZE = 25;
@@ -92,7 +92,7 @@ function RatesCard({ settings, onSaved, toast }: { settings: Settings; onSaved: 
   const save = async () => {
     setBusy(true);
     try {
-      onSaved(await apiRequest<Overview>(`${base}/settings`, { method: "PUT", body: { enabled: f.enabled, reward: n(f.reward), welcomeGift: n(f.welcomeGift) } }));
+      onSaved(await apiRequest<Overview>(`${base}/settings`, { method: "PUT", body: { enabled: f.enabled, reward: n(f.reward), welcomeGift: n(f.welcomeGift), maxWelcomePerNetwork: n(f.maxWelcomePerNetwork), blockSameNetworkGifts: f.blockSameNetworkGifts } }));
       toast("Saved. The app shows the new rates right away.");
     } catch (e) {
       toast(e instanceof Error ? e.message : "Couldn't save", "error");
@@ -119,6 +119,29 @@ function RatesCard({ settings, onSaved, toast }: { settings: Settings; onSaved: 
             </div>
             <span className="mt-1 block text-xs font-normal text-muted">Sarpanch's red packet every new user opens once (with or without an invite).</span>
           </label>
+        </div>
+        <div className="border-t border-line pt-4">
+          <p className="mb-3 text-sm font-semibold">Fake accounts</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block text-sm font-semibold">
+              Welcome red packets per network
+              <div className="mt-1 max-w-[260px]">
+                <NumberField value={f.maxWelcomePerNetwork} onChange={(v) => setF((x) => ({ ...x, maxWelcomePerNetwork: v }))} suffix="accounts" />
+              </div>
+              <span className="mt-1 block text-xs font-normal text-muted">
+                Only this many accounts that sign up from one connection (one Wi-Fi or phone) get the welcome red packet. 0 = no limit. Phones on a shared mobile network are not counted.
+              </span>
+            </label>
+            <div>
+              <Toggle
+                checked={f.blockSameNetworkGifts}
+                onChange={(v) => setF((x) => ({ ...x, blockSameNetworkGifts: v }))}
+                label="Block gifts between accounts on the same network"
+                hint="Stops fake accounts sending their coins to the main one. CP partners can still send to each other. Applies to accounts created from now on."
+              />
+            </div>
+          </div>
+          <p className="mt-3 text-xs text-muted">A friend who joins from the inviter's own network, or from a network that already got its welcome gift, earns the inviter nothing.</p>
         </div>
         <Button variant="primary" busy={busy} disabled={!dirty} onClick={() => void save()}>
           Save
@@ -207,7 +230,10 @@ function ListCard({ version }: { version: number }) {
                   <PersonCell p={r.inviter} />
                   <PersonCell p={r.friend} />
                   <td className="px-4 py-2.5 text-muted">{when(r.joinedAt)}</td>
-                  <td className="px-4 py-2.5 text-right font-semibold">{fmtCoins(r.reward)}</td>
+                  <td className="px-4 py-2.5 text-right">
+                    <span className="font-semibold">{fmtCoins(r.reward)}</span>
+                    {r.note ? <span className="block text-xs text-coral">{r.note}</span> : null}
+                  </td>
                 </tr>
               ))}
             </tbody>
