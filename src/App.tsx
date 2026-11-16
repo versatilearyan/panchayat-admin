@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ComponentType } from "react";
-import { Activity, BarChart3, Coins, CreditCard, Dice5, FileClock, ScrollText, Flag, Gift, IndianRupee, Mail, Landmark, LayoutDashboard, Lock, LogOut, MessagesSquare, Settings, ShoppingBag, UserCog, Users, Wallet, Crown, Gem, UsersRound, Sparkles, Eye, ListChecks, Tag, PartyPopper } from "lucide-react";
+import { Activity, BarChart3, Coins, CreditCard, Dice5, FileClock, ScrollText, Flag, Gift, IndianRupee, Mail, Landmark, LayoutDashboard, Lock, LogOut, MessagesSquare, Settings, ShoppingBag, UserCog, Users, Wallet, Crown, Gem, UsersRound, Sparkles, Eye, ListChecks, Tag, PartyPopper, Share2 } from "lucide-react";
 import { adminApi } from "./api";
 import { getSession, setSession, type AdminSession } from "./api/session";
 import { BACKEND_ENABLED } from "./config/api";
@@ -32,6 +32,7 @@ import { VipPlansPage } from "./pages/VipPlans";
 import { CpRingsPage } from "./pages/CpRings";
 import { CpCouplesPage } from "./pages/CpCouples";
 import { RoomTreasurePage } from "./pages/RoomTreasure";
+import { ReferralsPage } from "./pages/Referrals";
 import { ManualTopupsPage } from "./pages/ManualTopups";
 import { PaymentTicketsPage } from "./pages/PaymentTickets";
 import { ParivarPage } from "./pages/Parivar";
@@ -103,6 +104,7 @@ const NAV: { page: Page; label: string; icon: typeof Users; child?: boolean }[] 
   { page: "visitorPlans", label: "Visitor log", icon: Eye, child: true },
   { page: "dailyTasks", label: "Daily tasks", icon: ListChecks },
   { page: "roomTreasure", label: "Room treasure", icon: Gem, child: true },
+  { page: "referrals", label: "Referrals", icon: Share2 },
   { page: "sarpanch", label: "Sarpanch", icon: Landmark },
   { page: "parivar", label: "Parivar", icon: UsersRound },
   { page: "titles", label: "Profile titles", icon: Tag },
@@ -140,6 +142,7 @@ const PAGE_VIEW: Record<Page, ComponentType> = {
   visitorPlans: VisitorPlansPage,
   dailyTasks: DailyTasksPage,
   roomTreasure: RoomTreasurePage,
+  referrals: ReferralsPage,
   sarpanch: SarpanchPage,
   parivar: ParivarPage,
   titles: ProfileTitlesPage,
