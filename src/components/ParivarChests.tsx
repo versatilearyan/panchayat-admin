@@ -437,6 +437,7 @@ function UploadRewards({ tierId, onDone }: { tierId: number; onDone: () => void 
   const [weight, setWeight] = useState("10");
   const [max, setMax] = useState("0");
   const [days, setDays] = useState("0");
+  const [wearAs, setWearAs] = useState("");
   const [busy, setBusy] = useState(false);
 
   const go = async () => {
@@ -449,6 +450,7 @@ function UploadRewards({ tierId, onDone }: { tierId: number; onDone: () => void 
       form.append("weight", weight || "1");
       form.append("maxPerChest", max || "0");
       form.append("validDays", days || "0");
+      if (wearAs) form.append("wearAs", wearAs);
       await apiUpload(`${base}/${tierId}/rewards/upload`, form).promise;
       toast(files.length === 1 ? "Added to the chest" : `${files.length} rewards added to the chest`);
       onDone();
@@ -463,6 +465,18 @@ function UploadRewards({ tierId, onDone }: { tierId: number; onDone: () => void 
       <div className="space-y-3 px-4 py-3">
         <p className="text-xs text-muted">Choose one or many files (PNG, JPG, GIF, WEBP, SVGA, MP4). Each becomes a reward of this chest, named after its file, and is also saved in the Parivar library under &quot;Chest rewards&quot;.</p>
         <input type="file" multiple accept=".png,.jpg,.jpeg,.gif,.webp,.svga,.mp4" disabled={busy} onChange={(e) => setFiles(Array.from(e.target.files ?? []))} className="text-xs" />
+        <label className="block max-w-sm text-xs font-semibold text-muted">
+          Wear as
+          <select className="field mt-1 h-9 w-full py-1" value={wearAs} onChange={(e) => setWearAs(e.target.value)} disabled={busy}>
+            <option value="">Nothing (a picture in the collection)</option>
+            <option value="FRAME">Frame (around the picture)</option>
+            <option value="ENTRY">Entry effect</option>
+            <option value="BUBBLE">Chat bubble</option>
+            <option value="BADGE">Badge (next to the name)</option>
+            <option value="PROFILE">Profile effect</option>
+          </select>
+          <span className="mt-1 block font-normal">Pick one and the winner finds it in the Bag with a Wear button, for the days set on the reward.</span>
+        </label>
         {files.length === 1 ? (
           <label className="block max-w-sm text-xs font-semibold text-muted">
             Name (optional)

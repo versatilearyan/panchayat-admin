@@ -11,7 +11,7 @@ import { MediaPreview } from "./MediaParts";
 
 const base = "/api/v1/admin/parivar/library";
 type Cat = { id: number; name: string; sortOrder: number; active: boolean; items: number };
-type Item = { id: number; categoryId: number | null; category: string | null; name: string; description: string | null; mediaUrl: string; path: string; format: string; rarity: string; active: boolean; usedInRewards: number };
+type Item = { id: number; categoryId: number | null; category: string | null; name: string; description: string | null; mediaUrl: string; path: string; format: string; rarity: string; wearAs?: string | null; active: boolean; usedInRewards: number };
 const RARITIES = ["COMMON", "PREMIUM", "EPIC", "LEGENDARY", "ULTRA_RARE"];
 const msg = (e: unknown, f: string) => (e instanceof Error && e.message ? e.message : f);
 
@@ -42,6 +42,7 @@ export function ParivarLibrary({ canSave }: { canSave: boolean }) {
   const [newCat, setNewCat] = useState("");
   const [catId, setCatId] = useState<number | "">("");
   const [rarity, setRarity] = useState("COMMON");
+  const [wearAs, setWearAs] = useState("");
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -69,6 +70,7 @@ export function ParivarLibrary({ canSave }: { canSave: boolean }) {
       for (const f of files) form.append("file", f);
       form.append("categoryId", String(catId));
       form.append("rarity", rarity);
+      if (wearAs) form.append("wearAs", wearAs);
       if (files.length === 1 && name.trim()) form.append("name", name.trim());
       if (desc.trim()) form.append("description", desc.trim());
       await apiUpload(base, form).promise;
@@ -157,6 +159,17 @@ export function ParivarLibrary({ canSave }: { canSave: boolean }) {
                 ))}
               </select>
             </label>
+            <label className="text-xs font-semibold text-muted">
+              Wear as
+              <select className="field mt-1 h-9 w-full py-1" value={wearAs} onChange={(e) => setWearAs(e.target.value)} disabled={!canSave}>
+                <option value="">Nothing (collection)</option>
+                <option value="FRAME">Frame</option>
+                <option value="ENTRY">Entry effect</option>
+                <option value="BUBBLE">Chat bubble</option>
+                <option value="BADGE">Badge</option>
+                <option value="PROFILE">Profile effect</option>
+              </select>
+            </label>
             <label className="text-xs font-semibold text-muted sm:col-span-2">
               Name (for one file; with many files each is named after its file)
               <input className="field mt-1 h-9 w-full py-1" maxLength={60} value={name} onChange={(e) => setName(e.target.value)} disabled={!canSave || files.length > 1} />
@@ -211,6 +224,14 @@ export function ParivarLibrary({ canSave }: { canSave: boolean }) {
                           {c.name}
                         </option>
                       ))}
+                    </select>
+                    <select className="field h-7 py-0 text-xs" value={i.wearAs ?? ""} disabled={!canSave} onChange={(e) => void run(() => apiRequest(`${base}/${i.id}`, { method: "PUT", body: { wearAs: e.target.value || "NONE" } }), "Saved")} aria-label="Wear as">
+                      <option value="">Not wearable</option>
+                      <option value="FRAME">Wear: Frame</option>
+                      <option value="ENTRY">Wear: Entry effect</option>
+                      <option value="BUBBLE">Wear: Chat bubble</option>
+                      <option value="BADGE">Wear: Badge</option>
+                      <option value="PROFILE">Wear: Profile effect</option>
                     </select>
                     <select className="field h-7 py-0 text-xs" value={i.rarity} disabled={!canSave} onChange={(e) => void run(() => apiRequest(`${base}/${i.id}`, { method: "PUT", body: { rarity: e.target.value } }))} aria-label="Rarity">
                       {RARITIES.map((r) => (
