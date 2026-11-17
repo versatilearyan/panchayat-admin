@@ -12,6 +12,7 @@ import { useAdmin } from "../context";
 import { apiRequest } from "../lib/api";
 import { Badge, Button, Card, Chips, Empty, fmtCoins, Loading, Modal, NumberField, PageHeader, Toggle } from "../components/ui";
 import { ConfirmDialog, Field, ListProblem, SearchBox, useList } from "../components/WalletParts";
+import { TagTypesCard } from "../components/TagTypes";
 import { mediaHref, MediaPreview, UploadSlot } from "../components/MediaParts";
 import { giftCatalogService, type ServerGift } from "../services/giftCatalogService";
 import { GiftCategoriesDialog, useGiftCategories, type GiftCategory } from "../components/GiftCategories";
@@ -111,6 +112,7 @@ export function GiftsLivePage() {
         }
       />
       <LuckyCard />
+      <TagTypesCard canSave={can("catalog.delete")} />
       <TagSlotsCard />
       <MusicSongsCard />
       {list.error ? <ListProblem error={list.error} onRetry={list.retry} /> : null}
