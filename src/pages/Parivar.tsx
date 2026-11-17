@@ -58,6 +58,7 @@ const PERM_LABEL: Record<string, string> = {
   MANAGE_GACHA: "Spend funds / cards on Gacha",
   MANAGE_CHESTS: "Buy and send chests",
   MANAGE_VOICE: "Start the Parivar voice room",
+  SEND_REDPACKET: "Send red packets to the Parivar",
 };
 const ROLES: Perm["role"][] = ["DEPUTY", "ADMIN", "MEMBER"];
 type Sec = "general" | "chori" | "kavach" | "gacha" | "chests" | "treasure" | "library" | "shop" | "tasks" | "parivars" | "redpackets" | "logs";
@@ -394,7 +395,7 @@ function Live() {
             cols={[
               { key: "name", label: "Name", type: "text" },
               { key: "imageUrl", label: "Image URL", type: "text", width: "160px" },
-              { key: "kind", label: "Kind", type: "enum", options: ["GACHA_CARD", "CHEST", "BARRIER"] },
+              { key: "kind", label: "Kind", type: "enum", options: ["GACHA_CARD", "CHEST", "BARRIER", "REDPACKET"] },
               { key: "ref", label: "Item ID", type: "int" },
               { key: "qty", label: "Qty", type: "int" },
               { key: "priceFunds", label: "Funds", type: "int" },
@@ -965,6 +966,11 @@ function RedPacketsAndBans({ canSave }: { canSave: boolean }) {
   const [pid, setPid] = useState("");
   const [uid, setUid] = useState("");
   const [why, setWhy] = useState("");
+  const [gp, setGp] = useState("");
+  const [gc, setGc] = useState("");
+  const [gn, setGn] = useState("10");
+  const [geq, setGeq] = useState(false);
+  const [gm, setGm] = useState("");
   const load = useCallback(() => {
     apiRequest<RpRow[]>(`${base}/redpackets`).then(setPackets).catch(() => setPackets([]));
     apiRequest<BanRow[]>(`${base}/bans`).then(setBans).catch(() => setBans([]));
@@ -981,6 +987,48 @@ function RedPacketsAndBans({ canSave }: { canSave: boolean }) {
   };
   return (
     <>
+      <ConfigTable
+        section="redpacket-types"
+        title="Red packet types (sold in the Parivar shop)"
+        canSave={canSave}
+        note="Each type is a red packet with a fixed coin amount split into pieces. Add it to the shop table with kind REDPACKET and Item ID = this type's ID to sell it."
+        cols={[
+          { key: "name", label: "Name", type: "text" },
+          { key: "coins", label: "Coins", type: "int" },
+          { key: "pieces", label: "Pieces", type: "int" },
+          { key: "sortOrder", label: "Order", type: "int" },
+          { key: "active", label: "On", type: "bool" },
+        ]}
+        blank={{ name: "New red packet", coins: 5000, pieces: 10, sortOrder: 99, active: true }}
+      />
+      {canSave ? (
+        <Card title="Send a red packet to a Parivar (free, from Panchayat)" className="mt-4">
+          <div className="flex flex-wrap items-end gap-2 px-4 py-3">
+            <label className="text-xs font-semibold">
+              Parivar ID
+              <input className="field mt-1 h-9 w-24" value={gp} onChange={(e) => setGp(e.target.value.replace(/\D/g, ""))} />
+            </label>
+            <label className="text-xs font-semibold">
+              Total coins
+              <input className="field mt-1 h-9 w-32" value={gc} onChange={(e) => setGc(e.target.value.replace(/\D/g, ""))} />
+            </label>
+            <label className="text-xs font-semibold">
+              Pieces
+              <input className="field mt-1 h-9 w-20" value={gn} onChange={(e) => setGn(e.target.value.replace(/\D/g, ""))} />
+            </label>
+            <label className="flex items-center gap-1.5 pb-2 text-xs font-semibold">
+              <input type="checkbox" checked={geq} onChange={(e) => setGeq(e.target.checked)} /> Equal split
+            </label>
+            <label className="min-w-[160px] flex-1 text-xs font-semibold">
+              Message
+              <input className="field mt-1 h-9" value={gm} maxLength={80} onChange={(e) => setGm(e.target.value)} />
+            </label>
+            <Button size="sm" disabled={!gp || !gc || !gn} onClick={() => void act(`${base}/${gp}/redpacket`, { coins: Number(gc), pieces: Number(gn), equal: geq, message: gm }, "Red packet bhej diya")}>
+              Send
+            </Button>
+          </div>
+        </Card>
+      ) : null}
       <Card title="Red packets sent to Parivars" className="mt-4">
         {!packets ? (
           <Loading />
@@ -1009,7 +1057,7 @@ function RedPacketsAndBans({ canSave }: { canSave: boolean }) {
                     <td className="px-2 py-2 text-right tabular-nums">
                       {r.claimed}/{r.pieces}
                     </td>
-                    <td className="px-2 py-2">{r.source === "FUNDS" ? "Treasury" : "Wallet"}</td>
+                    <td className="px-2 py-2">{r.source === "ADMIN" ? "Admin" : r.source === "SHOP" ? "Shop packet" : r.source === "FUNDS" ? "Treasury" : "Wallet"}</td>
                     <td className="px-2 py-2">
                       <Badge tone={r.status === "OPEN" ? "ok" : "muted"}>{r.status}</Badge>
                     </td>

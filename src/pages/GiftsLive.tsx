@@ -453,7 +453,7 @@ function TriggerInputs({ gift, value, onSave }: { gift: ServerGift; value?: Trig
 }
 
 
-type Lucky = { enabled: boolean; chancePercent: number; defaultMin: number; defaultMax: number; highChance: number; middleChance: number; minGiftCoins: number; dailyCap: number; pairDailyLimit: number; coinsPerCharm: number };
+type Lucky = { enabled: boolean; chancePercent: number; defaultMin: number; defaultMax: number; highChance: number; middleChance: number; minGiftCoins: number; dailyCap: number; pairDailyLimit: number; coinsPerCharm: number; tiers: string };
 type LuckyLog = { todayCount: number; todayCoins: number; recent: { id: number; receiver?: string; receiverId: number; senderId?: number; giftId?: string; count: number; giftCoins: number; amount: number; createdAt: string }[] };
 
 const LUCKY_FIELDS: { key: keyof Lucky; label: string; hint?: string }[] = [
@@ -467,6 +467,38 @@ const LUCKY_FIELDS: { key: keyof Lucky; label: string; hint?: string }[] = [
   { key: "dailyCap", label: "Most per person per day (coins)", hint: "Stops coin farming between two accounts. 0 = no limit." },
   { key: "pairDailyLimit", label: "Lucky wins per sender and receiver per day", hint: "0 = no limit." },
 ];
+
+/** Chance by gift price: "gift costs at least X coins → Y% chance". A dearer gift can be given a bigger chance. */
+function TierEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const rows = value ? value.split(";").map((p) => p.split(":")) : [];
+  const write = (r: string[][]) => onChange(r.filter((x) => x[0] !== "" && x[1] !== "").map((x) => `${x[0]}:${x[1]}`).join(";"));
+  const set = (i: number, j: number, val: string) => {
+    const next = rows.map((r) => [...r]);
+    next[i][j] = val.replace(/[^\d.]/g, "");
+    onChange(next.map((x) => `${x[0]}:${x[1]}`).join(";"));
+  };
+  return (
+    <div className="sm:col-span-2">
+      <p className="label">Chance by gift price</p>
+      <p className="mb-2 text-xs text-muted">A gift that costs at least this many coins (one gift) gets that chance. The highest price it reaches is used; gifts under every row use the plain chance above. Example: 0 coins → 5%, 10,000 → 15%, 50,000 → 40%.</p>
+      {rows.map((r, i) => (
+        <div key={i} className="mb-2 flex items-center gap-2">
+          <span className="text-xs text-muted">Costs at least</span>
+          <input className="field h-9 w-32" inputMode="numeric" value={r[0]} onChange={(e) => set(i, 0, e.target.value)} aria-label="Gift price" />
+          <span className="text-xs text-muted">coins → chance</span>
+          <input className="field h-9 w-20" inputMode="decimal" value={r[1]} onChange={(e) => set(i, 1, e.target.value)} aria-label="Chance percent" />
+          <span className="text-xs text-muted">%</span>
+          <Button size="sm" onClick={() => write(rows.filter((_, k) => k !== i))}>
+            Remove
+          </Button>
+        </div>
+      ))}
+      <Button size="sm" onClick={() => onChange(value ? `${value};0:0` : "0:0")}>
+        + Add price rule
+      </Button>
+    </div>
+  );
+}
 
 /** Lucky coins: random coins for the person who receives a gift. Every rule is set here. */
 function LuckyCard() {
@@ -521,6 +553,7 @@ function LuckyCard() {
                 {f.hint ? <p className="mt-1 text-xs text-muted">{f.hint}</p> : null}
               </div>
             ))}
+            <TierEditor value={v.tiers ?? ""} onChange={(t) => setV({ ...v, tiers: t })} />
           </div>
         ) : null}
         <div className="mt-4 flex justify-end">
