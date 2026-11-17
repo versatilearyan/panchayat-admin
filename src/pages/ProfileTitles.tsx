@@ -374,7 +374,7 @@ function Manage({ t, canSave, onChanged, onDeleted }: { t: Title; canSave: boole
                 <span className="max-w-[320px] truncate font-mono text-xs" title={r.value}>
                   {r.kind === "IDS" ? `${r.value.split(",").length} IDs` : r.kind === "VIP_LEVEL" ? `${r.value} or higher` : r.kind.startsWith("TOPUP") ? `₹${Number(r.value).toLocaleString("en-IN")} or more` : r.kind.startsWith("GIFT") ? `${Number(r.value).toLocaleString("en-IN")} coins or more` : r.value}
                 </span>
-                <span className="text-xs text-muted">{r.days === 0 ? "while they qualify" : `${r.days} days, once`}</span>
+                <span className="text-xs text-muted">{r.days === 0 ? (MONEY_KINDS.includes(r.kind) ? "title's own validity, renewed on every top-up / gift" : "while they qualify") : MONEY_KINDS.includes(r.kind) ? `${r.days} days, renewed on every top-up / gift` : `${r.days} days, once`}</span>
                 <span className="text-xs text-muted">{r.matched} people{r.lastRun ? ` · ran ${new Date(r.lastRun).toLocaleTimeString("en-IN")}` : ""}</span>
                 <span className="ml-auto flex items-center gap-2">
                   <Toggle checked={r.active} label="On" disabled={!canSave} onChange={(v) => void run(() => apiRequest(`${base}/rules/${r.id}`, { method: "PUT", body: { active: v } }), v ? "Rule on" : "Rule off")} />
@@ -415,14 +415,14 @@ function Manage({ t, canSave, onChanged, onDeleted }: { t: Title; canSave: boole
             )}
           </label>
           <label className="text-xs font-semibold text-muted">
-            Days (0 = while they qualify)
+            {MONEY_KINDS.includes(rk) ? "Days (0 = the title's own validity)" : "Days (0 = while they qualify)"}
             <input className="field mt-1 h-9 w-28 py-1" inputMode="numeric" value={rd} onChange={(e) => setRd(Number(e.target.value.replace(/\D/g, "")) || 0)} disabled={!canSave} />
           </label>
           <Button className="mt-5" variant="gold" disabled={!canSave || !rv.trim()} onClick={() => void run(async () => { await apiRequest(`${base}/${t.id}/rules`, { method: "POST", body: { kind: rk, value: rv, days: rd } }); setRv(""); }, "Rule added and run")}>
             <Plus className="h-4 w-4" /> Add rule
           </Button>
         </div>
-        <p className="mt-2 text-xs text-muted">{RULE_HELP[rk]} Rules run when you add them and then every 5 minutes.</p>
+        <p className="mt-2 text-xs text-muted">{RULE_HELP[rk]} Rules run when you add them and then every 5 minutes. Top-up and gift rules also run the moment someone tops up or sends a gift, and each one renews the title's validity (set on the title itself, or Days here).</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
