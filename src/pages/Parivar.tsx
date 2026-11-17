@@ -60,7 +60,7 @@ const PERM_LABEL: Record<string, string> = {
   MANAGE_VOICE: "Start the Parivar voice room",
 };
 const ROLES: Perm["role"][] = ["DEPUTY", "ADMIN", "MEMBER"];
-type Sec = "general" | "chori" | "kavach" | "gacha" | "chests" | "treasure" | "library" | "shop" | "tasks" | "parivars" | "logs";
+type Sec = "general" | "chori" | "kavach" | "gacha" | "chests" | "treasure" | "library" | "shop" | "tasks" | "parivars" | "redpackets" | "logs";
 const SECS: { value: Sec; label: string }[] = [
   { value: "general", label: "General, levels, roles" },
   { value: "chori", label: "Chori and switches" },
@@ -72,6 +72,7 @@ const SECS: { value: Sec; label: string }[] = [
   { value: "shop", label: "Shop and cheer" },
   { value: "tasks", label: "Tasks and prizes" },
   { value: "parivars", label: "Parivars" },
+  { value: "redpackets", label: "Red packets and bans" },
   { value: "logs", label: "Logs" },
 ];
 
@@ -542,6 +543,8 @@ function Live() {
         </>
       ) : null}
 
+      {sec === "redpackets" ? <RedPacketsAndBans canSave={canSave} /> : null}
+
       {sec === "logs" ? (
         <>
           <Logs />
@@ -947,5 +950,135 @@ function Logs() {
         </div>
       )}
     </Card>
+  );
+}
+type RpRow = { id: string; parivarId: string; parivar: string; sender: string; source: string; total: number; pieces: number; claimed: number; paid: number; status: string; at: string };
+type BanRow = { parivarId: string; parivar: string; userId: string; name: string; publicId: number; reason?: string; bannedBy?: string; at: string };
+
+/** Red packets the Mukhiyas sent, and the bans: look at them, ban someone from a Parivar, or lift a ban. */
+function RedPacketsAndBans({ canSave }: { canSave: boolean }) {
+  const { toast } = useAdmin();
+  const [packets, setPackets] = useState<RpRow[] | null>(null);
+  const [bans, setBans] = useState<BanRow[] | null>(null);
+  const [pid, setPid] = useState("");
+  const [uid, setUid] = useState("");
+  const [why, setWhy] = useState("");
+  const load = useCallback(() => {
+    apiRequest<RpRow[]>(`${base}/redpackets`).then(setPackets).catch(() => setPackets([]));
+    apiRequest<BanRow[]>(`${base}/bans`).then(setBans).catch(() => setBans([]));
+  }, []);
+  useEffect(load, [load]);
+  const act = async (path: string, body: unknown, ok: string) => {
+    try {
+      await apiRequest(path, { method: "POST", body });
+      toast(ok);
+      load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Couldn't do that.");
+    }
+  };
+  return (
+    <>
+      <Card title="Red packets sent to Parivars" className="mt-4">
+        {!packets ? (
+          <Loading />
+        ) : !packets.length ? (
+          <Empty>No red packets yet.</Empty>
+        ) : (
+          <div className="scroll-thin overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead className="text-xs text-muted">
+                <tr>
+                  <th className="px-2 py-2">Parivar</th>
+                  <th className="px-2 py-2">Mukhiya</th>
+                  <th className="px-2 py-2 text-right">Coins</th>
+                  <th className="px-2 py-2 text-right">Pieces</th>
+                  <th className="px-2 py-2">From</th>
+                  <th className="px-2 py-2">Status</th>
+                  <th className="px-2 py-2">When</th>
+                </tr>
+              </thead>
+              <tbody>
+                {packets.map((r) => (
+                  <tr key={r.id} className="border-t border-line">
+                    <td className="px-2 py-2 font-semibold">{r.parivar}</td>
+                    <td className="px-2 py-2">{r.sender}</td>
+                    <td className="px-2 py-2 text-right tabular-nums">{fmtCoins(r.total)}</td>
+                    <td className="px-2 py-2 text-right tabular-nums">
+                      {r.claimed}/{r.pieces}
+                    </td>
+                    <td className="px-2 py-2">{r.source === "FUNDS" ? "Treasury" : "Wallet"}</td>
+                    <td className="px-2 py-2">
+                      <Badge tone={r.status === "OPEN" ? "ok" : "muted"}>{r.status}</Badge>
+                    </td>
+                    <td className="px-2 py-2 text-xs text-muted">{new Date(r.at).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      <Card title="Banned from a Parivar" className="mt-4">
+        {canSave ? (
+          <div className="flex flex-wrap items-end gap-2 px-4 pt-3">
+            <label className="text-xs font-semibold">
+              Parivar ID
+              <input className="field mt-1 h-9 w-28" value={pid} onChange={(e) => setPid(e.target.value.replace(/\D/g, ""))} />
+            </label>
+            <label className="text-xs font-semibold">
+              User ID (internal)
+              <input className="field mt-1 h-9 w-28" value={uid} onChange={(e) => setUid(e.target.value.replace(/\D/g, ""))} />
+            </label>
+            <label className="min-w-[160px] flex-1 text-xs font-semibold">
+              Reason
+              <input className="field mt-1 h-9" value={why} onChange={(e) => setWhy(e.target.value)} maxLength={120} />
+            </label>
+            <Button size="sm" variant="danger" disabled={!pid || !uid} onClick={() => void act(`${base}/${pid}/ban`, { userId: Number(uid), reason: why }, "Ban ho gaya")}>
+              Ban
+            </Button>
+          </div>
+        ) : null}
+        {!bans ? (
+          <Loading />
+        ) : !bans.length ? (
+          <Empty>Koi ban nahi hai.</Empty>
+        ) : (
+          <div className="scroll-thin overflow-x-auto">
+            <table className="mt-2 w-full min-w-[560px] text-left text-sm">
+              <thead className="text-xs text-muted">
+                <tr>
+                  <th className="px-2 py-2">Parivar</th>
+                  <th className="px-2 py-2">Person</th>
+                  <th className="px-2 py-2">Reason</th>
+                  <th className="px-2 py-2">By</th>
+                  <th className="px-2 py-2" />
+                </tr>
+              </thead>
+              <tbody>
+                {bans.map((b) => (
+                  <tr key={`${b.parivarId}-${b.userId}`} className="border-t border-line">
+                    <td className="px-2 py-2 font-semibold">{b.parivar}</td>
+                    <td className="px-2 py-2">
+                      {b.name} <span className="text-xs text-muted">#{b.publicId}</span>
+                    </td>
+                    <td className="px-2 py-2 text-muted">{b.reason ?? "–"}</td>
+                    <td className="px-2 py-2 text-muted">{b.bannedBy ?? "Admin"}</td>
+                    <td className="px-2 py-2 text-right">
+                      {canSave ? (
+                        <Button size="sm" onClick={() => void act(`${base}/${b.parivarId}/unban`, { userId: Number(b.userId) }, "Ban hata diya")}>
+                          Unban
+                        </Button>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+    </>
   );
 }
