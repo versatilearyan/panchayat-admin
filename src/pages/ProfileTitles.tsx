@@ -19,6 +19,8 @@ type Holder = { userId: number; publicId?: number; name: string; source: string;
 const msg = (e: unknown, f: string) => (e instanceof Error && e.message ? e.message : f);
 
 function Pill({ t, name }: { t: { name: string; iconUrl: string | null; iconFormat?: string; colorFrom: string; colorTo: string; textColor: string }; name?: string }) {
+  // A title is its uploaded artwork (WEBP, SVGA or MP4); an old title without one still shows as a coloured tag
+  if (t.iconUrl) return <MediaPreview media={{ url: t.iconUrl, format: t.iconFormat ?? formatOf(t.iconUrl) }} size={44} />;
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full py-1 pl-1.5 pr-3 text-[13px] font-bold shadow" style={{ background: `linear-gradient(90deg, ${t.colorFrom}, ${t.colorTo})`, color: t.textColor }}>
       {t.iconUrl ? <MediaPreview media={{ url: t.iconUrl, format: t.iconFormat ?? formatOf(t.iconUrl) }} size={22} /> : <span className="text-[14px]">★</span>}
@@ -128,24 +130,9 @@ function Live() {
   );
 }
 
-function ColorField({ label, value, onChange, disabled }: { label: string; value: string; onChange: (v: string) => void; disabled?: boolean }) {
-  return (
-    <label className="text-xs font-semibold text-muted">
-      {label}
-      <span className="mt-1 flex items-center gap-2">
-        <input type="color" value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} className="h-9 w-12 cursor-pointer rounded border border-line bg-transparent" />
-        <input className="field h-9 w-24 py-1 font-mono text-xs" value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} maxLength={7} />
-      </span>
-    </label>
-  );
-}
-
 function Create({ canSave, onDone }: { canSave: boolean; onDone: () => Promise<void> }) {
   const { toast } = useAdmin();
   const [name, setName] = useState("");
-  const [from, setFrom] = useState("#7b5cff");
-  const [to, setTo] = useState("#c56bff");
-  const [text, setText] = useState("#ffffff");
   const [rarity, setRarity] = useState("COMMON");
   const [price, setPrice] = useState(0);
   const [free, setFree] = useState(false);
@@ -157,9 +144,6 @@ function Create({ canSave, onDone }: { canSave: boolean; onDone: () => Promise<v
     try {
       const f = new FormData();
       f.append("name", name.trim());
-      f.append("colorFrom", from);
-      f.append("colorTo", to);
-      f.append("textColor", text);
       f.append("rarity", rarity);
       f.append("priceCoins", String(free ? 0 : price));
       f.append("free", String(free));
@@ -183,13 +167,10 @@ function Create({ canSave, onDone }: { canSave: boolean; onDone: () => Promise<v
             Name
             <input className="field mt-1 h-9 w-52 py-1" maxLength={30} value={name} onChange={(e) => setName(e.target.value)} disabled={!canSave} placeholder="Shining Star" />
           </label>
-          <ColorField label="Colour from" value={from} onChange={setFrom} disabled={!canSave} />
-          <ColorField label="Colour to" value={to} onChange={setTo} disabled={!canSave} />
-          <ColorField label="Text" value={text} onChange={setText} disabled={!canSave} />
           <div>
             <p className="text-xs font-semibold text-muted">Preview</p>
-            <div className="mt-1">
-              <Pill t={{ name: name || "Title name", iconUrl: preview, iconFormat: file ? formatOf(file.name) : undefined, colorFrom: from, colorTo: to, textColor: text }} />
+            <div className="mt-1 flex h-14 min-w-[120px] items-center">
+              {preview ? <MediaPreview media={{ url: preview, format: file ? formatOf(file.name) : null }} size={52} /> : <span className="text-xs text-muted">Choose a file</span>}
             </div>
           </div>
         </div>
@@ -210,10 +191,10 @@ function Create({ canSave, onDone }: { canSave: boolean; onDone: () => Promise<v
             </label>
           ) : null}
           <label className="text-xs font-semibold text-muted">
-            Picture or animation (optional: PNG, JPG, GIF, WEBP, SVGA, MP4)
-            <input type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.svga,.mp4" className="mt-1 block text-xs" onChange={(e) => setFile(e.target.files?.[0] ?? null)} disabled={!canSave} />
+            Title artwork (required: WEBP, SVGA or MP4 only)
+            <input type="file" accept=".webp,.svga,.mp4" className="mt-1 block text-xs" onChange={(e) => setFile(e.target.files?.[0] ?? null)} disabled={!canSave} />
           </label>
-          <Button variant="gold" busy={busy} disabled={!canSave || !name.trim()} onClick={() => void go()}>
+          <Button variant="gold" busy={busy} disabled={!canSave || !name.trim() || !file} onClick={() => void go()}>
             <Upload className="h-4 w-4" /> Add title
           </Button>
         </div>
@@ -284,9 +265,6 @@ function Manage({ t, canSave, onChanged, onDeleted }: { t: Title; canSave: boole
           method: "PUT",
           body: {
             name: f.name,
-            colorFrom: f.colorFrom,
-            colorTo: f.colorTo,
-            textColor: f.textColor,
             rarity: f.rarity,
             priceCoins: f.free ? 0 : f.priceCoins,
             free: f.free,
@@ -308,9 +286,6 @@ function Manage({ t, canSave, onChanged, onDeleted }: { t: Title; canSave: boole
           Name
           <input className="field mt-1 h-9 w-48 py-1" maxLength={30} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} disabled={!canSave} />
         </label>
-        <ColorField label="From" value={f.colorFrom} onChange={(v) => setF({ ...f, colorFrom: v })} disabled={!canSave} />
-        <ColorField label="To" value={f.colorTo} onChange={(v) => setF({ ...f, colorTo: v })} disabled={!canSave} />
-        <ColorField label="Text" value={f.textColor} onChange={(v) => setF({ ...f, textColor: v })} disabled={!canSave} />
         <label className="text-xs font-semibold text-muted">
           Rarity
           <select className="field mt-1 h-9 w-36 py-1" value={f.rarity} onChange={(e) => setF({ ...f, rarity: e.target.value })} disabled={!canSave}>
@@ -427,10 +402,10 @@ function Manage({ t, canSave, onChanged, onDeleted }: { t: Title; canSave: boole
 
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-gold">
-          <Upload className="h-4 w-4" /> {t.iconUrl ? "Change picture / animation" : "Add picture / animation"}
+          <Upload className="h-4 w-4" /> {t.iconUrl ? "Change artwork (WEBP, SVGA or MP4)" : "Add artwork (WEBP, SVGA or MP4)"}
           <input
             type="file"
-            accept=".png,.jpg,.jpeg,.gif,.webp,.svga,.mp4"
+            accept=".webp,.svga,.mp4"
             className="sr-only"
             disabled={!canSave}
             onChange={(e) => {

@@ -11,6 +11,7 @@ import { UsersPage } from "./pages/Users";
 import { RoomsLivePage as RoomsPage } from "./pages/RoomsLive";
 import { NewbieRoomsPage } from "./pages/NewbieRooms";
 import { ProfileTitlesPage } from "./pages/ProfileTitles";
+import { NameFramesPage } from "./pages/NameFrames";
 import { FestivalsPage } from "./pages/Festivals";
 import { ReportsPage } from "./pages/Reports";
 import { ActivityPage } from "./pages/Activity";
@@ -116,6 +117,7 @@ const NAV: { page: Page; label: string; icon: typeof Users; child?: boolean }[] 
   { page: "sarpanch", label: "Sarpanch", icon: Landmark },
   { page: "parivar", label: "Parivar", icon: UsersRound },
   { page: "titles", label: "Profile titles", icon: Tag },
+  { page: "nameFrames", label: "Name frames", icon: Tag },
   { page: "festivals", label: "Festival Manager", icon: PartyPopper },
   { page: "newbie", label: "Newbie rooms", icon: Sparkles },
   { page: "activity", label: "Activity log", icon: Activity },
@@ -158,6 +160,7 @@ const PAGE_VIEW: Record<Page, ComponentType> = {
   sarpanch: SarpanchPage,
   parivar: ParivarPage,
   titles: ProfileTitlesPage,
+  nameFrames: NameFramesPage,
   festivals: FestivalsPage,
   newbie: NewbieRoomsPage,
   activity: ActivityPage,
