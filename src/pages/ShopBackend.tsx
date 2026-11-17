@@ -136,6 +136,7 @@ function Products({ categories, onEdit, onAddCategory }: { categories: ShopCateg
                       <span className="truncate font-semibold">{p.name}</span>
                       {p.rarity ? <Badge tone={RARITY_TONE[p.rarity.toUpperCase()] ?? "muted"}>{pretty(p.rarity)}</Badge> : null}
                       {isSvga(p.assetUrl) ? <Badge tone="coral">SVGA</Badge> : null}
+                      {p.validDays ? <Badge tone="muted">{p.validDays} days</Badge> : null}
                       {!p.active ? <Badge>Off sale</Badge> : null}
                     </span>
                     <span className="mt-0.5 flex flex-wrap items-center gap-x-3 text-sm">
@@ -203,6 +204,8 @@ function ProductForm({ product, categories, onClose, onAddCategory }: { product:
     rarity: product?.rarity ?? "COMMON",
     assetUrl: product?.assetUrl ?? "",
     displayOrder: String(product?.displayOrder ?? 0),
+    validDays: String(product?.validDays ?? 0),
+    wearSlot: product?.wearSlot ?? "",
     active: product?.active ?? true,
   });
   const [busy, setBusy] = useState(false);
@@ -214,6 +217,7 @@ function ProductForm({ product, categories, onClose, onAddCategory }: { product:
   const choices = categories.filter((c) => c.active || String(c.id) === f.categoryId);
   const price = Number(f.price);
   const order = Number(f.displayOrder);
+  const days = Number(f.validDays);
   const problem = upload === "uploading"
     ? "Wait for the image to finish uploading."
     : upload === "failed"
@@ -230,7 +234,9 @@ function ProductForm({ product, categories, onClose, onAddCategory }: { product:
           ? "The price can't be below 0."
         : !Number.isInteger(order) || order < 0
           ? "Display order must be a whole number, 0 or more."
-          : null;
+          : !Number.isInteger(days) || days < 0
+            ? "Days must be a whole number, 0 or more (0 = forever)."
+            : null;
   const rarities = RARITIES.includes(f.rarity.toUpperCase()) ? RARITIES : [f.rarity, ...RARITIES];
 
   const save = async () => {
@@ -246,6 +252,8 @@ function ProductForm({ product, categories, onClose, onAddCategory }: { product:
       rarity: f.rarity,
       assetUrl: f.assetUrl.trim(),
       displayOrder: order,
+      validDays: days,
+      wearSlot: f.wearSlot,
     };
     try {
       const saved = product ? await shopProductService.update(product.id, body) : await shopProductService.create(body);
@@ -318,6 +326,28 @@ function ProductForm({ product, categories, onClose, onAddCategory }: { product:
             Display order
           </label>
           <input id="bp-order" className="field" type="number" inputMode="numeric" min={0} step={1} value={f.displayOrder} onChange={(e) => set("displayOrder", e.target.value)} />
+        </div>
+        <div>
+          <label className="label" htmlFor="bp-days">
+            Lasts (days)
+          </label>
+          <input id="bp-days" className="field" type="number" inputMode="numeric" min={0} step={1} value={f.validDays} onChange={(e) => set("validDays", e.target.value)} />
+          <p className="mt-1 text-xs text-muted">0 = forever. After buying, it runs out of the Bag after this many days.</p>
+        </div>
+        <div>
+          <label className="label" htmlFor="bp-wear">
+            Worn as
+          </label>
+          <select id="bp-wear" className="field" value={f.wearSlot} onChange={(e) => set("wearSlot", e.target.value)}>
+            <option value="">Automatic (from the category name)</option>
+            <option value="FRAME">Avatar frame</option>
+            <option value="BUBBLE">Chat bubble</option>
+            <option value="ENTRY">Entry effect</option>
+            <option value="PROFILE">Profile effect</option>
+            <option value="BADGE">Badge</option>
+            <option value="NONE">Not wearable (just kept in the Bag)</option>
+          </select>
+          <p className="mt-1 text-xs text-muted">Wearable items go to the Bag, where the buyer can wear and take them off.</p>
         </div>
       </div>
       <div>

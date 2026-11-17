@@ -13,6 +13,10 @@ export type ShopProduct = {
   rarity: string | null;
   assetUrl: string | null;
   displayOrder: number;
+  /** Days a bought item lasts (0 = forever). */
+  validDays?: number;
+  /** FRAME, BUBBLE, ENTRY, PROFILE, BADGE, NONE; empty = worked out from the category name. */
+  wearSlot?: string | null;
   active: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -27,6 +31,8 @@ export type ProductInput = {
   rarity: string;
   assetUrl: string;
   displayOrder: number;
+  validDays: number;
+  wearSlot: string;
 };
 
 const base = ENDPOINTS.shopProducts;
