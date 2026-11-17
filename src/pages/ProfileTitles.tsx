@@ -227,7 +227,13 @@ const RULE_HELP: Record<string, string> = {
   IDS: "A list of 7 digit user IDs (the rare people, the team ...). Paste them separated by commas, spaces or new lines.",
   VIP_LEVEL: "Everyone who has this VIP level or a higher one.",
   PARIVAR_ROLE: "Everyone who holds this role in any Parivar.",
+  TOPUP_TOTAL: "Everyone whose total top-ups (payment gateway and manual UPI together) reach this many rupees. The title comes the moment they top up.",
+  TOPUP_ONE: "Everyone who makes a single top-up of at least this many rupees (gateway or manual UPI). The title comes the moment they top up.",
+  GIFT_SENT: "Everyone who has sent gifts worth this many coins in total (room gifts and personal gifts). The title comes as they send.",
+  GIFT_RECEIVED: "Everyone who has received gifts worth this many coins in total (room gifts and personal gifts).",
 };
+const KIND_LABEL: Record<string, string> = { IDS: "ID list", VIP_LEVEL: "VIP level", PARIVAR_ROLE: "Parivar role", TOPUP_TOTAL: "Total top-up", TOPUP_ONE: "Single top-up", GIFT_SENT: "Gifts sent", GIFT_RECEIVED: "Gifts received" };
+const MONEY_KINDS = ["TOPUP_TOTAL", "TOPUP_ONE", "GIFT_SENT", "GIFT_RECEIVED"];
 const dateOf = (s: string | null) => (s ? s.slice(0, 10) : "");
 
 function Manage({ t, canSave, onChanged, onDeleted }: { t: Title; canSave: boolean; onChanged: () => Promise<void>; onDeleted: () => void }) {
@@ -364,9 +370,9 @@ function Manage({ t, canSave, onChanged, onDeleted }: { t: Title; canSave: boole
           <ul className="mb-3 divide-y divide-line text-sm">
             {rules.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center gap-3 py-1.5">
-                <Badge tone="gold">{r.kind === "IDS" ? "ID list" : r.kind === "VIP_LEVEL" ? "VIP level" : "Parivar role"}</Badge>
+                <Badge tone="gold">{KIND_LABEL[r.kind] ?? r.kind}</Badge>
                 <span className="max-w-[320px] truncate font-mono text-xs" title={r.value}>
-                  {r.kind === "IDS" ? `${r.value.split(",").length} IDs` : r.kind === "VIP_LEVEL" ? `${r.value} or higher` : r.value}
+                  {r.kind === "IDS" ? `${r.value.split(",").length} IDs` : r.kind === "VIP_LEVEL" ? `${r.value} or higher` : r.kind.startsWith("TOPUP") ? `₹${Number(r.value).toLocaleString("en-IN")} or more` : r.kind.startsWith("GIFT") ? `${Number(r.value).toLocaleString("en-IN")} coins or more` : r.value}
                 </span>
                 <span className="text-xs text-muted">{r.days === 0 ? "while they qualify" : `${r.days} days, once`}</span>
                 <span className="text-xs text-muted">{r.matched} people{r.lastRun ? ` · ran ${new Date(r.lastRun).toLocaleTimeString("en-IN")}` : ""}</span>
@@ -387,10 +393,14 @@ function Manage({ t, canSave, onChanged, onDeleted }: { t: Title; canSave: boole
               <option value="IDS">List of user IDs</option>
               <option value="VIP_LEVEL">VIP level</option>
               <option value="PARIVAR_ROLE">Parivar role</option>
+              <option value="TOPUP_TOTAL">Total top-up (₹)</option>
+              <option value="TOPUP_ONE">Single top-up (₹)</option>
+              <option value="GIFT_SENT">Gifts sent (coins)</option>
+              <option value="GIFT_RECEIVED">Gifts received (coins)</option>
             </select>
           </label>
           <label className="min-w-[220px] flex-1 text-xs font-semibold text-muted">
-            {rk === "IDS" ? "User IDs" : rk === "VIP_LEVEL" ? "Lowest VIP level" : "Role"}
+            {rk === "IDS" ? "User IDs" : rk === "VIP_LEVEL" ? "Lowest VIP level" : rk.startsWith("TOPUP") ? "Rupees (₹)" : rk.startsWith("GIFT") ? "Coins" : "Role"}
             {rk === "IDS" ? (
               <textarea className="field mt-1 h-20 w-full py-1 font-mono text-xs" value={rv} onChange={(e) => setRv(e.target.value)} placeholder="4000123, 4000456, 4000789" disabled={!canSave} />
             ) : rk === "PARIVAR_ROLE" ? (
@@ -401,7 +411,7 @@ function Manage({ t, canSave, onChanged, onDeleted }: { t: Title; canSave: boole
                 ))}
               </select>
             ) : (
-              <input className="field mt-1 h-9 w-full py-1" inputMode="numeric" value={rv} onChange={(e) => setRv(e.target.value.replace(/\D/g, ""))} placeholder="3" disabled={!canSave} />
+              <input className="field mt-1 h-9 w-full py-1" inputMode="numeric" value={rv} onChange={(e) => setRv(e.target.value.replace(/\D/g, ""))} placeholder={MONEY_KINDS.includes(rk) ? "500" : "3"} disabled={!canSave} />
             )}
           </label>
           <label className="text-xs font-semibold text-muted">
