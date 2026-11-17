@@ -10,7 +10,7 @@ import { Badge, Button, Card, ErrorNote, Loading, PageHeader } from "../componen
 type Row = { id: string; name: string; tables: number | null; players: number | null; inPlay: number | null; bots?: number; enabled: boolean };
 type Live = { games: Row[]; updatedAt: number };
 
-const EMOJI: Record<string, string> = { GADDAR: "🛖", RMCS: "👑", LUDO: "🎲", JACKAROO: "🃏" };
+const EMOJI: Record<string, string> = { GADDAR: "🛖", RMCS: "👑", LUDO: "🎲", JACKAROO: "🃏", HILL: "🚙" };
 const base = "/api/v1/admin/manage/games";
 
 export function GamesPage() {
@@ -96,7 +96,7 @@ export function GamesPage() {
                   </div>
                 </dl>
                 {g.bots !== undefined ? <p className="mt-2 text-xs text-muted">{g.bots} bots table bhar rahe hain</p> : null}
-                {g.id === "GADDAR" || g.id === "RMCS" ? (
+                {g.id === "GADDAR" || g.id === "RMCS" || g.id === "HILL" ? (
                   <Button className="mt-4 w-full" variant={g.enabled ? "soft" : "primary"} busy={busy === g.id} onClick={() => void flip(g)}>
                     {g.enabled ? "Band karo" : "Chalu karo"}
                   </Button>
@@ -106,8 +106,73 @@ export function GamesPage() {
               </Card>
             ))}
           </div>
+          <HillSettings />
         </>
       )}
     </>
+  );
+}
+
+type HillCfg = { dailyCap: number; runCap: number; coinBig: number; coinSmall: number };
+type HillData = { settings: HillCfg; stats: { runsToday: number; playersToday: number; coinsToday: number; coinsTotal: number } };
+
+/** Pahadi Daud: how many coins a person can take home, and the two coin values on the road. */
+function HillSettings() {
+  const { toast } = useAdmin();
+  const [d, setD] = useState<HillData | null>(null);
+  const [f, setF] = useState<HillCfg | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    apiRequest<HillData>(`${base}/hill`)
+      .then((r) => {
+        setD(r);
+        setF(r.settings);
+      })
+      .catch(() => undefined);
+  }, []);
+  if (!d || !f) return null;
+  const num = (k: keyof HillCfg, v: string) => setF({ ...f, [k]: Number(v) || 0 });
+  const save = async () => {
+    setBusy(true);
+    try {
+      const r = await apiRequest<HillData>(`${base}/hill/settings`, { method: "PUT", body: f });
+      setD(r);
+      setF(r.settings);
+      toast("Pahadi Daud save ho gaya");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Couldn't save.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="mt-5">
+      <Card title="🚙 Pahadi Daud (solo game): coins">
+        <div className="grid gap-3 sm:grid-cols-4">
+          <label className="block text-sm font-semibold">
+            Roz ki limit (coins)
+            <input className="field mt-1" type="number" min={0} value={f.dailyCap} onChange={(e) => num("dailyCap", e.target.value)} />
+          </label>
+          <label className="block text-sm font-semibold">
+            Ek run ki limit
+            <input className="field mt-1" type="number" min={0} value={f.runCap} onChange={(e) => num("runCap", e.target.value)} />
+          </label>
+          <label className="block text-sm font-semibold">
+            Bada coin
+            <input className="field mt-1" type="number" min={0} value={f.coinBig} onChange={(e) => num("coinBig", e.target.value)} />
+          </label>
+          <label className="block text-sm font-semibold">
+            Chhota coin
+            <input className="field mt-1" type="number" min={0} value={f.coinSmall} onChange={(e) => num("coinSmall", e.target.value)} />
+          </label>
+        </div>
+        <p className="mt-2 text-xs text-muted">
+          Sadak par coin {f.coinBig}, {f.coinSmall}, {f.coinBig}, {f.coinSmall}... ke kram me hain. Jo coins user uthata hai wo run khatam hote hi seedha uske wallet me jata hai (server sach check karta hai). Aaj: {d.stats.playersToday} players, {d.stats.runsToday} runs, {d.stats.coinsToday.toLocaleString("en-IN")} coins diye. Ab tak {d.stats.coinsTotal.toLocaleString("en-IN")} coins.
+        </p>
+        <Button className="mt-3" variant="primary" busy={busy} onClick={() => void save()}>
+          Save
+        </Button>
+      </Card>
+    </div>
   );
 }
