@@ -63,6 +63,7 @@ function CoinPacksLive() {
           </Button>
         }
       />
+      <PackTitlesCard />
       {list.error && list.error.kind !== "forbidden" ? <ListProblem error={list.error} onRetry={list.retry} /> : null}
       {list.error?.kind === "forbidden" ? (
         <ListProblem error={list.error} onRetry={list.retry} />
@@ -455,6 +456,81 @@ function PlayProductsCard() {
             </tbody>
           </table>
         </div>
+      </div>
+    </Card>
+  );
+}
+
+type PackTitle = { id: number; name: string; coins: number; price: number; active: boolean; titleId: number | null; days: number };
+type TitleOpt = { id: number; name: string };
+
+/** A profile title for each coin pack: whoever buys the pack (payment gateway or manual UPI) gets it, with the days set here (0 = the title's own validity). */
+function PackTitlesCard() {
+  const { toast } = useAdmin();
+  const [rows, setRows] = useState<PackTitle[] | null>(null);
+  const [titles, setTitles] = useState<TitleOpt[]>([]);
+  const [busy, setBusy] = useState<number | null>(null);
+  const load = () => {
+    apiRequest<PackTitle[]>("/api/v1/admin/titles/coin-packs").then(setRows).catch(() => setRows([]));
+    apiRequest<{ titles?: TitleOpt[]; items?: TitleOpt[] } | TitleOpt[]>("/api/v1/admin/titles")
+      .then((r) => setTitles(Array.isArray(r) ? r : (r.titles ?? r.items ?? [])))
+      .catch(() => undefined);
+  };
+  useEffect(load, []);
+  if (!rows?.length) return null;
+  const set = (id: number, patch: Partial<PackTitle>) => setRows((cur) => (cur ?? []).map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  const save = async (r: PackTitle) => {
+    setBusy(r.id);
+    try {
+      await apiRequest(`/api/v1/admin/titles/coin-packs/${r.id}`, { method: "PUT", body: { titleId: r.titleId, days: r.days } });
+      toast(r.titleId ? "Title saved for this pack" : "Title removed from this pack");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Couldn't save", "error");
+    } finally {
+      setBusy(null);
+    }
+  };
+  return (
+    <Card title="Title for each coin pack" className="mb-4">
+      <p className="px-4 pt-3 text-sm text-muted">Whoever buys a pack (payment gateway or manual UPI) gets the title you pick, as soon as the payment is done. Every purchase renews its validity. Days 0 = the title's own validity (set in Titles). A new pack shows up here automatically.</p>
+      <div className="scroll-thin overflow-x-auto p-3">
+        <table className="w-full min-w-[620px] text-left text-sm">
+          <thead className="text-[11px] tracking-wide text-muted uppercase">
+            <tr>
+              <th className="px-2 py-2">Pack</th>
+              <th className="px-2 py-2">Title</th>
+              <th className="px-2 py-2">Days</th>
+              <th className="px-2 py-2" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line">
+            {rows.map((r) => (
+              <tr key={r.id}>
+                <td className="px-2 py-2">
+                  <span className="font-semibold">{r.name}</span> <span className="text-xs text-muted">₹{r.price} · {fmtCoins(r.coins)} coins{r.active ? "" : " · off"}</span>
+                </td>
+                <td className="px-2 py-2">
+                  <select className="field h-9 w-52 py-1" value={r.titleId ?? ""} onChange={(e) => set(r.id, { titleId: e.target.value ? Number(e.target.value) : null })} aria-label={`Title for ${r.name}`}>
+                    <option value="">No title</option>
+                    {titles.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+                <td className="px-2 py-2">
+                  <input className="field h-9 w-20 py-1" inputMode="numeric" value={r.days} onChange={(e) => set(r.id, { days: Number(e.target.value.replace(/\D/g, "")) || 0 })} aria-label={`Days for ${r.name}`} />
+                </td>
+                <td className="px-2 py-2 text-right">
+                  <Button size="sm" variant="gold" busy={busy === r.id} onClick={() => void save(r)}>
+                    Save
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </Card>
   );
