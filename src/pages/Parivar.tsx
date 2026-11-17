@@ -303,14 +303,16 @@ function Live() {
             canSave={canSave}
             deletable
             cols={[
-              { key: "kind", label: "Kind", type: "enum", options: ["COINS", "FUNDS", "CHARM", "CHEST", "CARD", "BARRIER"] },
+              { key: "kind", label: "Kind", type: "enum", options: ["COINS", "FUNDS", "CHARM", "CHEST", "CARD", "BARRIER", "GIFT_CARD", "ITEM"] },
               { key: "ref", label: "Item ID", type: "int" },
+              { key: "giftId", label: "Gift ID (GIFT_CARD)", type: "text" },
               { key: "amount", label: "Amount", type: "int" },
+              { key: "validDays", label: "Valid days", type: "int" },
               { key: "weight", label: "Weight", type: "int" },
               { key: "label", label: "Label", type: "text" },
               { key: "active", label: "On", type: "bool" },
             ]}
-            blank={{ kind: "COINS", ref: 0, amount: 100, weight: 10, label: "100 coins", active: true }}
+            blank={{ kind: "COINS", ref: 0, giftId: "", amount: 100, validDays: 0, weight: 10, label: "100 coins", active: true }}
           />
         </>
       ) : null}
