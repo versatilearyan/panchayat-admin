@@ -7,17 +7,95 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useAdmin } from "../context";
 import { apiRequest } from "../lib/api";
 import { Badge, Button, Card, Empty, ErrorNote, Loading, Modal, PageHeader, Toggle } from "../components/ui";
+import { AssetUpload, type AssetUploadState } from "../components/AssetUpload";
 
-type Ev = { id: number; title: string; whenText: string; body: string; theme: string; motif: string; active: boolean; sortOrder: number; startsAt: string | null; endsAt: string | null };
-type Form = { title: string; whenText: string; body: string; theme: string; motif: string; active: boolean; sortOrder: number; startsAt: string; endsAt: string };
+type Ev = {
+  id: number;
+  title: string;
+  whenText: string;
+  body: string;
+  theme: string;
+  motif: string;
+  active: boolean;
+  sortOrder: number;
+  startsAt: string | null;
+  endsAt: string | null;
+  imageUrl: string | null;
+  section: string | null;
+  tag: string | null;
+  tagColor: string | null;
+  link: string | null;
+};
+type Form = { title: string; whenText: string; body: string; theme: string; motif: string; active: boolean; sortOrder: number; startsAt: string; endsAt: string; imageUrl: string; section: string; tag: string; tagColor: string; link: string };
+
+/** Where an event goes when tapped in the app's Event Center. */
+const LINKS: { value: string; label: string }[] = [
+  { value: "", label: "Nothing (just the banner)" },
+  { value: "shop", label: "Shop" },
+  { value: "pk", label: "PK Coins & PK ranking" },
+  { value: "ranking", label: "Rankings" },
+  { value: "recharge", label: "Recharge (add coins)" },
+  { value: "parivar", label: "Parivar (family)" },
+  { value: "games", label: "Games" },
+  { value: "vip", label: "VIP" },
+  { value: "tasks", label: "Daily tasks" },
+  { value: "room", label: "A room (room ID)" },
+  { value: "web", label: "A web page (https://)" },
+];
+const SECTIONS = ["Bonus", "Recommend", "PK", "Family", "Festival"];
 
 const THEMES = ["gold", "ember", "night", "dusk", "rose", "monsoon"];
 const MOTIFS = ["lanterns", "kites", "river", "banyan", "temple", "huts"];
 const base = "/api/v1/admin/manage/events";
-const EMPTY: Form = { title: "", whenText: "", body: "", theme: "gold", motif: "lanterns", active: true, sortOrder: 0, startsAt: "", endsAt: "" };
+const EMPTY: Form = { title: "", whenText: "", body: "", theme: "gold", motif: "lanterns", active: true, sortOrder: 0, startsAt: "", endsAt: "", imageUrl: "", section: "Recommend", tag: "", tagColor: "#2f6bf0", link: "" };
+
+/** The link the server stores, from the form's choice (room:<id>, https://…, or a page name). */
+const linkOut = (f: Form) => {
+  const l = f.link.trim();
+  // A room or page picked but not filled in yet: no link
+  if (!l || l === "room:" || l === "https://") return null;
+  return l;
+};
+const linkKind = (l: string) => (l.startsWith("room:") ? "room" : l.startsWith("https://") ? "web" : l);
+const formOf = (ev: Ev): Form => ({
+  title: ev.title,
+  whenText: ev.whenText,
+  body: ev.body,
+  theme: ev.theme,
+  motif: ev.motif,
+  active: ev.active,
+  sortOrder: ev.sortOrder,
+  startsAt: toLocal(ev.startsAt),
+  endsAt: toLocal(ev.endsAt),
+  imageUrl: ev.imageUrl ?? "",
+  section: ev.section ?? "Recommend",
+  tag: ev.tag ?? "",
+  tagColor: ev.tagColor ?? "#2f6bf0",
+  link: ev.link ?? "",
+});
+const bodyOf = (f: Form) => ({
+  title: f.title,
+  whenText: f.whenText,
+  body: f.body,
+  theme: f.theme,
+  motif: f.motif,
+  active: f.active,
+  sortOrder: Number(f.sortOrder) || 0,
+  startsAt: toIso(f.startsAt),
+  endsAt: toIso(f.endsAt),
+  imageUrl: f.imageUrl.trim() || null,
+  section: f.section.trim() || "Recommend",
+  tag: f.tag.trim() || null,
+  tagColor: f.tag.trim() ? f.tagColor : null,
+  link: linkOut(f),
+});
 
 // <input type="datetime-local"> works in local time; the server wants an exact moment
-const toLocal = (iso: string | null) => (iso ? new Date(iso).toISOString().slice(0, 16) : "");
+function toLocal(iso: string | null) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+}
 const toIso = (local: string) => (local ? new Date(local).toISOString() : null);
 
 export function EventsPage() {
@@ -26,6 +104,7 @@ export function EventsPage() {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ id: number | null; form: Form } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [upload, setUpload] = useState<AssetUploadState>("idle");
 
   const load = useCallback(() => {
     apiRequest<Ev[]>(base)
@@ -42,7 +121,7 @@ export function EventsPage() {
     const f = editing.form;
     setBusy(true);
     try {
-      const body = { title: f.title, whenText: f.whenText, body: f.body, theme: f.theme, motif: f.motif, active: f.active, sortOrder: Number(f.sortOrder) || 0, startsAt: toIso(f.startsAt), endsAt: toIso(f.endsAt) };
+      const body = bodyOf(f);
       if (editing.id === null) await apiRequest(base, { method: "POST", body });
       else await apiRequest(`${base}/${editing.id}`, { method: "PUT", body });
       toast(editing.id === null ? "Event add ho gaya" : "Event badal diya");
@@ -57,7 +136,7 @@ export function EventsPage() {
 
   const flip = async (ev: Ev) => {
     try {
-      await apiRequest(`${base}/${ev.id}`, { method: "PUT", body: { ...ev, active: !ev.active } });
+      await apiRequest(`${base}/${ev.id}`, { method: "PUT", body: { ...bodyOf(formOf(ev)), active: !ev.active } });
       load();
     } catch (e) {
       toast(e instanceof Error ? e.message : "Couldn't change it.");
@@ -80,8 +159,8 @@ export function EventsPage() {
   return (
     <>
       <PageHeader
-        title="Special events"
-        sub="App ke Discover screen par dikhne wale event cards. Yahin se badlo, band karo ya naye jodo."
+        title="Events & Event Center"
+        sub="Home screen ke Event Center (aur Discover) me dikhne wale events. Banner, section (Bonus / Recommend …), corner tag (PK, Recharge …) aur tap karne par kya khule, sab yahin se."
         right={
           <Button variant="primary" onClick={() => setEditing({ id: null, form: { ...EMPTY, sortOrder: (rows?.length ?? 0) + 1 } })}>
             <Plus className="h-4 w-4" aria-hidden /> Naya event
@@ -101,10 +180,13 @@ export function EventsPage() {
             <Card key={ev.id}>
               <div className="flex flex-wrap items-center gap-3">
                 <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/5 text-sm font-black text-muted">{ev.sortOrder}</span>
+                {ev.imageUrl ? <img src={ev.imageUrl} alt="" className="h-12 w-20 rounded-lg object-cover" /> : null}
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-bold">{ev.title}</p>
                   <p className="truncate text-xs text-muted">
-                    {ev.whenText || "—"} · {ev.theme}/{ev.motif}
+                    {ev.section ?? "Recommend"}
+                    {ev.tag ? ` · tag ${ev.tag}` : ""}
+                    {ev.link ? ` · opens ${ev.link}` : ""} · {ev.whenText || "—"}
                     {ev.startsAt ? ` · se ${new Date(ev.startsAt).toLocaleString()}` : ""}
                     {ev.endsAt ? ` · tak ${new Date(ev.endsAt).toLocaleString()}` : ""}
                   </p>
@@ -113,7 +195,7 @@ export function EventsPage() {
                 <Button size="sm" onClick={() => void flip(ev)}>
                   {ev.active ? "Band karo" : "Chalu karo"}
                 </Button>
-                <Button size="sm" onClick={() => setEditing({ id: ev.id, form: { title: ev.title, whenText: ev.whenText, body: ev.body, theme: ev.theme, motif: ev.motif, active: ev.active, sortOrder: ev.sortOrder, startsAt: toLocal(ev.startsAt), endsAt: toLocal(ev.endsAt) } })}>
+                <Button size="sm" onClick={() => setEditing({ id: ev.id, form: formOf(ev) })}>
                   <Pencil className="h-3.5 w-3.5" aria-hidden /> Badlo
                 </Button>
                 <Button size="sm" variant="danger" onClick={() => void remove(ev)} aria-label={`Delete ${ev.title}`}>
@@ -141,7 +223,49 @@ export function EventsPage() {
               Description
               <textarea className="field mt-1 min-h-[72px]" value={editing.form.body} maxLength={240} onChange={(e) => set("body", e.target.value)} />
             </label>
+            <div>
+              <p className="text-sm font-semibold">Banner (Event Center card)</p>
+              <AssetUpload id="ev-banner" value={editing.form.imageUrl} onChange={(ref) => set("imageUrl", ref)} onStateChange={setUpload} />
+              <p className="mt-1 text-xs text-muted">Wide picture, about 2:1 (e.g. 660×330). Bina banner ke card theme ke rang me banega.</p>
+            </div>
             <div className="grid grid-cols-2 gap-3">
+              <label className="block text-sm font-semibold">
+                Section
+                <input className="field mt-1" list="ev-sections" maxLength={30} value={editing.form.section} onChange={(e) => set("section", e.target.value)} placeholder="Recommend" />
+                <datalist id="ev-sections">
+                  {SECTIONS.map((s) => (
+                    <option key={s} value={s} />
+                  ))}
+                </datalist>
+              </label>
+              <label className="block text-sm font-semibold">
+                Corner tag (optional)
+                <span className="mt-1 flex gap-2">
+                  <input className="field" maxLength={20} value={editing.form.tag} onChange={(e) => set("tag", e.target.value)} placeholder="PK / Recharge / Family" />
+                  <input type="color" className="h-10 w-12 shrink-0 cursor-pointer rounded-lg bg-transparent" value={editing.form.tagColor} onChange={(e) => set("tagColor", e.target.value)} aria-label="Tag colour" />
+                </span>
+              </label>
+              <label className="col-span-2 block text-sm font-semibold">
+                Tap karne par kya khule
+                <span className="mt-1 flex flex-col gap-2 sm:flex-row">
+                  <select
+                    className="field"
+                    value={linkKind(editing.form.link)}
+                    onChange={(e) => set("link", e.target.value === "room" ? "room:" : e.target.value === "web" ? "https://" : e.target.value)}
+                  >
+                    {LINKS.map((l) => (
+                      <option key={l.value} value={l.value}>
+                        {l.label}
+                      </option>
+                    ))}
+                  </select>
+                  {linkKind(editing.form.link) === "room" ? (
+                    <input className="field" inputMode="numeric" value={editing.form.link.slice(5)} onChange={(e) => set("link", `room:${e.target.value.replace(/\D/g, "")}`)} placeholder="Room ID" />
+                  ) : linkKind(editing.form.link) === "web" ? (
+                    <input className="field" type="url" value={editing.form.link} onChange={(e) => set("link", e.target.value)} placeholder="https://panchayat.world/…" />
+                  ) : null}
+                </span>
+              </label>
               <label className="block text-sm font-semibold">
                 Rang (theme)
                 <select className="field mt-1" value={editing.form.theme} onChange={(e) => set("theme", e.target.value)}>
@@ -174,7 +298,7 @@ export function EventsPage() {
             <Toggle checked={editing.form.active} onChange={(v) => set("active", v)} label="App me dikhao" hint="Band karoge to card app se hat jayega, par yahan bacha rahega." />
             <div className="flex justify-end gap-2 pt-2">
               <Button onClick={() => setEditing(null)}>Cancel</Button>
-              <Button variant="primary" busy={busy} disabled={!editing.form.title.trim()} onClick={() => void save()}>
+              <Button variant="primary" busy={busy} disabled={!editing.form.title.trim() || upload !== "idle"} onClick={() => void save()}>
                 Save
               </Button>
             </div>
