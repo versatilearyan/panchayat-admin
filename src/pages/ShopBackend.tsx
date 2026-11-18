@@ -206,6 +206,8 @@ function ProductForm({ product, categories, onClose, onAddCategory }: { product:
     displayOrder: String(product?.displayOrder ?? 0),
     validDays: String(product?.validDays ?? 0),
     wearSlot: product?.wearSlot ?? "",
+    entryMode: (product?.entryAvatar ?? "OVERLAY").startsWith("SLOT") ? "SLOT" : (product?.entryAvatar ?? "OVERLAY"),
+    entryKey: (product?.entryAvatar ?? "").startsWith("SLOT:") ? (product?.entryAvatar ?? "").slice(5) : "",
     active: product?.active ?? true,
   });
   const [busy, setBusy] = useState(false);
@@ -254,6 +256,7 @@ function ProductForm({ product, categories, onClose, onAddCategory }: { product:
       displayOrder: order,
       validDays: days,
       wearSlot: f.wearSlot,
+      entryAvatar: f.entryMode === "SLOT" ? (f.entryKey.trim() ? `SLOT:${f.entryKey.trim()}` : "SLOT") : f.entryMode,
     };
     try {
       const saved = product ? await shopProductService.update(product.id, body) : await shopProductService.create(body);
@@ -350,6 +353,30 @@ function ProductForm({ product, categories, onClose, onAddCategory }: { product:
           <p className="mt-1 text-xs text-muted">Wearable items go to the Bag, where the buyer can wear and take them off.</p>
         </div>
       </div>
+      {f.wearSlot === "ENTRY" || (!f.wearSlot && /entry|entrance/i.test(categories.find((c) => String(c.id) === f.categoryId)?.name ?? "")) ? (
+        <div className="grid gap-4 rounded-2xl bg-cream/[0.03] p-3 ring-1 ring-line sm:grid-cols-2">
+          <div>
+            <label className="label" htmlFor="bp-entry-pic">
+              Profile picture on the entry
+            </label>
+            <select id="bp-entry-pic" className="field" value={f.entryMode} onChange={(e) => set("entryMode", e.target.value)}>
+              <option value="SLOT">Inside the animation (its avatar slot) + name</option>
+              <option value="OVERLAY">On top of the banner, with the name</option>
+              <option value="NONE">No picture, only the name</option>
+            </select>
+            <p className="mt-1 text-xs text-muted">Pick "Inside the animation" for SVGA entries made with an empty avatar circle: the wearer&apos;s picture fills it.</p>
+          </div>
+          {f.entryMode === "SLOT" ? (
+            <div>
+              <label className="label" htmlFor="bp-entry-key">
+                Avatar slot name <span className="normal-case tracking-normal text-muted/70">(optional)</span>
+              </label>
+              <input id="bp-entry-key" className="field" maxLength={50} value={f.entryKey} onChange={(e) => set("entryKey", e.target.value.replace(/[^A-Za-z0-9_.-]/g, ""))} placeholder="Found automatically (avatar, head …)" />
+              <p className="mt-1 text-xs text-muted">The image key inside the SVGA. Leave empty to find it by name; if none is found the picture shows on top.</p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       <div>
         <label className="label" htmlFor="bp-asset">
           Image or SVGA <span className="normal-case tracking-normal text-muted/70">(shown in the app's Shop)</span>
