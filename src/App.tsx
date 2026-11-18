@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ComponentType } from "react";
-import { Activity, BadgeCheck, BarChart3, Coins, CreditCard, Dice5, FileClock, ScrollText, Flag, Gift, IndianRupee, Mail, Landmark, LayoutDashboard, Lock, LogOut, MessagesSquare, Settings, ShoppingBag, UserCog, Users, Wallet, Crown, Gem, UsersRound, Sparkles, Eye, ListChecks, Tag, PartyPopper, Share2, ShieldCheck, Gamepad2, CalendarDays, Gift as GiftIcon } from "lucide-react";
+import { Activity, BadgeCheck, BarChart3, Coins, CreditCard, Dice5, FileClock, ScrollText, Flag, Gift, IndianRupee, Mail, Landmark, LayoutDashboard, Lock, LogOut, MessagesSquare, Settings, ShoppingBag, UserCog, Users, Wallet, Crown, Gem, UsersRound, Sparkles, Eye, ListChecks, Tag, PartyPopper, Share2, ShieldCheck, Gamepad2, CalendarDays, Swords, Gift as GiftIcon } from "lucide-react";
 import { adminApi } from "./api";
 import { getSession, setSession, type AdminSession } from "./api/session";
 import { BACKEND_ENABLED } from "./config/api";
@@ -42,6 +42,7 @@ import { StaffPage } from "./pages/Staff";
 import { SettingsPage } from "./pages/Settings";
 import { SarpanchPage } from "./pages/Sarpanch";
 import { OfficialIdsPage } from "./pages/OfficialIds";
+import { PkSystemPage } from "./pages/PkSystem";
 import { GamesPage } from "./pages/Games";
 import { EventsPage } from "./pages/Events";
 import { DailyRewardsPage } from "./pages/DailyRewards";
@@ -113,6 +114,7 @@ const NAV: { page: Page; label: string; icon: typeof Users; child?: boolean }[] 
   { page: "referrals", label: "Referrals", icon: Share2 },
   { page: "guard", label: "Guard", icon: ShieldCheck },
   { page: "games", label: "Game modes", icon: Gamepad2 },
+  { page: "pkSystem", label: "PK Coins & rooms", icon: Swords },
   { page: "events", label: "Special events", icon: CalendarDays },
   { page: "dailyRewards", label: "Daily rewards", icon: GiftIcon },
   { page: "sarpanch", label: "Sarpanch", icon: Landmark },
@@ -161,6 +163,7 @@ const PAGE_VIEW: Record<Page, ComponentType> = {
   dailyRewards: DailyRewardsPage,
   sarpanch: SarpanchPage,
   officials: OfficialIdsPage,
+  pkSystem: PkSystemPage,
   parivar: ParivarPage,
   titles: ProfileTitlesPage,
   nameFrames: NameFramesPage,

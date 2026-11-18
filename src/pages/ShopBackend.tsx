@@ -392,6 +392,7 @@ function Categories({ data, error, loading, onEdit, onAdd }: { data: ShopCategor
                     <span className="flex flex-wrap items-center gap-2">
                       <span className="truncate font-semibold">{c.name}</span>
                       {!c.active ? <Badge>Hidden</Badge> : null}
+                      {c.currency === "PK_COINS" ? <Badge tone="info">PK Coins</Badge> : null}
                     </span>
                     <span className="mt-0.5 block truncate text-xs text-muted">{[`Order ${c.displayOrder ?? 0}`, c.description].filter(Boolean).join(" · ")}</span>
                   </span>
@@ -423,6 +424,7 @@ function CategoryForm({ category, onClose }: { category: ShopCategory | null; on
     imageUrl: category?.imageUrl ?? "",
     displayOrder: String(category?.displayOrder ?? 0),
     active: category?.active ?? true,
+    currency: (category?.currency ?? "COINS") as "COINS" | "PK_COINS",
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -435,7 +437,7 @@ function CategoryForm({ category, onClose }: { category: ShopCategory | null; on
     if (busy || problem) return;
     setBusy(true);
     setError(null);
-    const body: CategoryInput = { name: f.name.trim(), description: f.description.trim(), imageUrl: f.imageUrl.trim(), displayOrder: order };
+    const body: CategoryInput = { name: f.name.trim(), description: f.description.trim(), imageUrl: f.imageUrl.trim(), displayOrder: order, currency: f.currency };
     try {
       const saved = category ? await shopCategoryService.update(category.id, body) : await shopCategoryService.create(body);
       const id = saved?.id ?? category?.id;
@@ -464,6 +466,18 @@ function CategoryForm({ category, onClose }: { category: ShopCategory | null; on
           </label>
           <input id="bc-order" className="field" type="number" inputMode="numeric" min={0} step={1} value={f.displayOrder} onChange={(e) => set("displayOrder", e.target.value)} />
         </div>
+      </div>
+      <div>
+        <label className="label" htmlFor="bc-currency">
+          Bought with
+        </label>
+        <select id="bc-currency" className="field" value={f.currency} onChange={(e) => set("currency", e.target.value as "COINS" | "PK_COINS")}>
+          <option value="COINS">Coins</option>
+          <option value="PK_COINS">PK Coins (the PK Shop)</option>
+        </select>
+        {f.currency === "PK_COINS" ? (
+          <p className="mt-1 text-xs text-muted">Items here are paid only in PK Coins and are never permanent: an item's own "valid days", else the PK default days (PK system page).</p>
+        ) : null}
       </div>
       <div>
         <label className="label" htmlFor="bc-desc">

@@ -9,12 +9,14 @@ export type ShopCategory = {
   imageUrl: string | null;
   displayOrder: number;
   active: boolean;
+  /** COINS, or PK_COINS: the PK Shop (bought only with PK Coins). */
+  currency?: "COINS" | "PK_COINS";
   createdAt?: string;
   updatedAt?: string;
 };
 
 /** Body for create (CreateCategoryRequest) and update (UpdateCategoryRequest). */
-export type CategoryInput = { name: string; description: string; imageUrl: string; displayOrder: number };
+export type CategoryInput = { name: string; description: string; imageUrl: string; displayOrder: number; currency?: "COINS" | "PK_COINS" };
 
 const base = ENDPOINTS.shopCategories;
 const id$ = (id: ShopCategory["id"]) => encodeURIComponent(String(id));
