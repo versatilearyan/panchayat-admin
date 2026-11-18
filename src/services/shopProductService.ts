@@ -17,6 +17,8 @@ export type ShopProduct = {
   validDays?: number;
   /** FRAME, BUBBLE, ENTRY, PROFILE, BADGE, NONE; empty = worked out from the category name. */
   wearSlot?: string | null;
+  /** Entry effects: how the wearer's picture shows (OVERLAY, SLOT, SLOT:key, NONE; empty = OVERLAY). */
+  entryAvatar?: string | null;
   active: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -33,6 +35,7 @@ export type ProductInput = {
   displayOrder: number;
   validDays: number;
   wearSlot: string;
+  entryAvatar?: string;
 };
 
 const base = ENDPOINTS.shopProducts;
