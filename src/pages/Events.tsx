@@ -105,6 +105,24 @@ export function EventsPage() {
   const [editing, setEditing] = useState<{ id: number | null; form: Form } | null>(null);
   const [busy, setBusy] = useState(false);
   const [upload, setUpload] = useState<AssetUploadState>("idle");
+  // The Event Center button on the app's home screen: on or off
+  const [center, setCenter] = useState<boolean | null>(null);
+  useEffect(() => {
+    apiRequest<{ enabled: boolean }>("/api/v1/events/center")
+      .then((r) => setCenter(r.enabled))
+      .catch(() => setCenter(false));
+  }, []);
+  const flipCenter = async (on: boolean) => {
+    const was = center;
+    setCenter(on);
+    try {
+      await apiRequest(`${base}/center`, { method: "PUT", body: { enabled: on } });
+      toast(on ? "Event Center home screen par chalu" : "Event Center band");
+    } catch (e) {
+      setCenter(was);
+      toast(e instanceof Error ? e.message : "Couldn't change it.");
+    }
+  };
 
   const load = useCallback(() => {
     apiRequest<Ev[]>(base)
@@ -167,6 +185,18 @@ export function EventsPage() {
           </Button>
         }
       />
+      <Card className="mb-3">
+        {center === null ? (
+          <Loading />
+        ) : (
+          <Toggle
+            checked={center}
+            onChange={(v) => void flipCenter(v)}
+            label="Event Center on the home screen"
+            hint="On: home screen par 'Events' button dikhega jo Event Center kholta hai. Off: button chhup jata hai (events Discover me dikhte rahenge)."
+          />
+        )}
+      </Card>
       {error ? <ErrorNote>{error}</ErrorNote> : null}
       {!rows ? (
         <Loading />
