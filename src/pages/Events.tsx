@@ -185,7 +185,7 @@ export function EventsPage() {
           </Button>
         }
       />
-      <Card className="mb-3">
+      <Card className="mb-3 p-4">
         {center === null ? (
           <Loading />
         ) : (
