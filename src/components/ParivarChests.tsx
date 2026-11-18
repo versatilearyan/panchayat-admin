@@ -308,7 +308,7 @@ function RewardRow({ r, gift, share, canEdit, onChanged, toast }: { r: Reward; g
         </label>
       ) : null}
       {r.kind !== "VIP_CARD" ? (
-        <label className="text-[11px] font-semibold text-muted" title="How many days the winner keeps it. 0 = never runs out (or the item's own length).">
+        <label className="text-[11px] font-semibold text-muted" title="How many days the winner keeps it. Worn and kept items (bubbles, frames, entries, badges, titles): 0 means 3 days. Items: 0 = their own length.">
           Valid days
           <Num label="Valid days" value={days} onChange={setDays} disabled={!canEdit} w="w-20" />
         </label>
@@ -436,7 +436,7 @@ function UploadRewards({ tierId, onDone }: { tierId: number; onDone: () => void 
   const [rarity, setRarity] = useState("COMMON");
   const [weight, setWeight] = useState("10");
   const [max, setMax] = useState("0");
-  const [days, setDays] = useState("0");
+  const [days, setDays] = useState("3");
   const [wearAs, setWearAs] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -483,7 +483,7 @@ function UploadRewards({ tierId, onDone }: { tierId: number; onDone: () => void 
             <input className="field mt-1 h-9 w-full py-1" maxLength={60} value={label} onChange={(e) => setLabel(e.target.value)} />
           </label>
         ) : null}
-        <Common rarity={rarity} setRarity={setRarity} weight={weight} setWeight={setWeight} max={max} setMax={setMax} days={days} setDays={setDays} daysLabel="Winner keeps it for (days, 0 = forever)" />
+        <Common rarity={rarity} setRarity={setRarity} weight={weight} setWeight={setWeight} max={max} setMax={setMax} days={days} setDays={setDays} daysLabel="Winner keeps it for (days; 0 = 3 days)" />
         <Button variant="gold" busy={busy} disabled={!files.length} onClick={() => void go()}>
           <Upload className="h-4 w-4" /> Upload {files.length > 1 ? `${files.length} files` : "and add"}
         </Button>
@@ -510,7 +510,7 @@ function OtherReward({ tierId, onDone }: { tierId: number; onDone: () => void })
   const [rarity, setRarity] = useState("COMMON");
   const [weight, setWeight] = useState("10");
   const [max, setMax] = useState("0");
-  const [days, setDays] = useState("0");
+  const [days, setDays] = useState("3");
   const [busy, setBusy] = useState(false);
   const k = OTHER_KINDS.find((x) => x.v === kind)!;
 
@@ -560,7 +560,7 @@ function OtherReward({ tierId, onDone }: { tierId: number; onDone: () => void })
           </label>
         </div>
         <p className="text-xs text-muted">{k.hint}</p>
-        <Common rarity={rarity} setRarity={setRarity} weight={weight} setWeight={setWeight} max={max} setMax={setMax} days={kind === "VIP_CARD" ? undefined : days} setDays={kind === "VIP_CARD" ? undefined : setDays} daysLabel={kind === "ITEM" || kind === "PROFILE_TITLE" ? "Lasts (days, 0 = its own length)" : "Winner keeps it for (days, 0 = forever)"} />
+        <Common rarity={rarity} setRarity={setRarity} weight={weight} setWeight={setWeight} max={max} setMax={setMax} days={kind === "VIP_CARD" ? undefined : days} setDays={kind === "VIP_CARD" ? undefined : setDays} daysLabel={kind === "ITEM" || kind === "PROFILE_TITLE" ? "Lasts (days, 0 = its own length)" : "Winner keeps it for (days; 0 = 3 days)"} />
         <Button variant="gold" busy={busy} disabled={!label.trim()} onClick={() => void add()}>
           <Plus className="h-4 w-4" /> Add to the chest
         </Button>
