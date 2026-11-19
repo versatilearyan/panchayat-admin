@@ -55,7 +55,7 @@ const all = ENDPOINTS.giveAll;
 
 export const adminUsersService = {
   /** days empty = permanent ban; otherwise a suspension for that many days. */
-  ban: async (id: number, days: number | null, reason: string) => apiRequest(`${base}/${id}/ban`, { method: "POST", body: { days, reason } }),
+  ban: async (id: number, days: number | null, reason: string, banDevice = false) => unwrap<{ phonesBanned?: number }>(await apiRequest(`${base}/${id}/ban`, { method: "POST", body: { days, reason, banDevice } })),
   /** amount empty = all of it. Super Admin only. */
   removeCoins: async (id: number, amount: number | null, reason: string) => unwrap<{ removed: number; balance: number }>(await apiRequest(`${base}/${id}/remove-coins`, { method: "POST", body: { amount, reason } })),
   removeCharm: async (id: number, amount: number | null, reason: string) => unwrap<{ removed: number; charm: number }>(await apiRequest(`${base}/${id}/remove-charm`, { method: "POST", body: { amount, reason } })),

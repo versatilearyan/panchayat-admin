@@ -30,6 +30,7 @@ function BanForm({ user, onClose }: { user: AppUser; onClose: () => void }) {
   const [len, setLen] = useState(7);
   const [custom, setCustom] = useState("14");
   const [reason, setReason] = useState("");
+  const [banPhone, setBanPhone] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const days = len === 0 ? null : len === -1 ? Math.round(Number(custom)) : len;
@@ -39,8 +40,9 @@ function BanForm({ user, onClose }: { user: AppUser; onClose: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      await adminUsersService.ban(user.id, days, reason.trim());
-      toast(days === null ? `${who(user)} is banned for good` : `${who(user)} is suspended for ${days} day${days === 1 ? "" : "s"}`);
+      const r = await adminUsersService.ban(user.id, days, reason.trim(), days === null && banPhone);
+      const phones = days === null && banPhone ? (r?.phonesBanned ? ` and ${r.phonesBanned} phone${r.phonesBanned === 1 ? "" : "s"} banned` : " (no phone on record, only the account)") : "";
+      toast(days === null ? `${who(user)} is banned for good${phones}` : `${who(user)} is suspended for ${days} day${days === 1 ? "" : "s"}`);
       changed();
       onClose();
     } catch (e) {
@@ -65,6 +67,15 @@ function BanForm({ user, onClose }: { user: AppUser; onClose: () => void }) {
           </div>
         ) : null}
         {len === 0 ? <p className="mt-2 text-xs text-[#ff9095]">Permanent: stays until you unban them.</p> : null}
+        {len === 0 ? (
+          <label className="mt-3 flex cursor-pointer items-start gap-2.5 rounded-2xl bg-ink px-3.5 py-3 text-sm ring-1 ring-line">
+            <input type="checkbox" className="mt-0.5 h-4 w-4" checked={banPhone} onChange={(e) => setBanPhone(e.target.checked)} />
+            <span>
+              <span className="font-semibold">Also ban their phone for good</span>
+              <span className="mt-0.5 block text-xs text-muted">That phone can no longer sign in or open a new account, even with another email or Google account. Unbanning this person lifts it.</span>
+            </span>
+          </label>
+        ) : null}
       </div>
       <div>
         <label className="label" htmlFor="ban-reason">
