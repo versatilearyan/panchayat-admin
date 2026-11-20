@@ -199,7 +199,7 @@ function Live() {
           section="barriers"
           title="Kavach types"
           canSave={canSave}
-          note="Strength is the chance (%) that this Kavach stops a Chori attempt. Price is paid from the Parivar treasury unless the Parivar already owns one."
+          note="While any Kavach is on, it blocks every Chori attempt: one success destroys it. Strength just ranks which type turns on next from the Parivar's own stockpile (highest first). Price is paid from the Parivar treasury unless the Parivar already owns one."
           cols={[
             { key: "name", label: "Name", type: "text" },
             { key: "imageUrl", label: "Image URL", type: "text", width: "180px" },
