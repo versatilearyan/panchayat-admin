@@ -317,6 +317,10 @@ export type AdminRoom = {
   /** Set on rooms made from the admin panel. */
   createdBy?: string;
   createdAt?: number;
+  /** Room level (1-10, from its own EXP: time spent + gifts), and how many members that level allows. */
+  exp?: number;
+  level?: number;
+  levelMembers?: number;
 };
 
 export type AdminStats = {

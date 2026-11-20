@@ -15,15 +15,20 @@ export function RoomsPage() {
   const rooms = useLoad(() => adminApi.listRooms(), [version]);
   const users = useLoad(() => adminApi.listUsers(), [version]);
   const [q, setQ] = useState("");
+  const [levelFilter, setLevelFilter] = useState<number | "">("");
+  const [sortByLevel, setSortByLevel] = useState(false);
   const [kick, setKick] = useState<{ user: AdminUser; roomId: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const userOf = (id: string) => users.data?.find((u) => u.id === id);
 
   const list = useMemo(() => {
     const term = q.trim().toLowerCase();
-    return (rooms.data ?? []).filter((r) => !term || r.name.toLowerCase().includes(term) || r.code.includes(term) || (userOf(r.hostId)?.name.toLowerCase().includes(term) ?? false));
+    const rows = (rooms.data ?? []).filter(
+      (r) => (!term || r.name.toLowerCase().includes(term) || r.code.includes(term) || (userOf(r.hostId)?.name.toLowerCase().includes(term) ?? false)) && (levelFilter === "" || r.level === levelFilter),
+    );
+    return sortByLevel ? [...rows].sort((a, b) => (b.level ?? 0) - (a.level ?? 0)) : rows;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rooms.data, users.data, q]);
+  }, [rooms.data, users.data, q, levelFilter, sortByLevel]);
 
   const letBack = async (id: string) => {
     setBusy(id);
@@ -65,9 +70,18 @@ export function RoomsPage() {
           ) : null
         }
       />
-      <div className="relative mb-4 md:w-96">
+      <div className="relative mb-3 md:w-96">
         <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
         <input className="field pl-9" placeholder="Room name, room ID or owner" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search rooms" />
+      </div>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <Chips
+          label="Room level"
+          value={levelFilter === "" ? "" : String(levelFilter)}
+          onChange={(v) => setLevelFilter(v === "" ? "" : Number(v))}
+          options={[{ value: "", label: "All levels" }, ...Array.from({ length: 10 }, (_, i) => ({ value: String(i + 1), label: `Lv${i + 1}` }))]}
+        />
+        <Toggle checked={sortByLevel} onChange={setSortByLevel} label="Highest level first" />
       </div>
       {rooms.error ? <ErrorNote>{rooms.error}</ErrorNote> : null}
       {rooms.loading && !rooms.data ? (
@@ -82,6 +96,7 @@ export function RoomsPage() {
                   <div className="min-w-0 flex-1">
                     <p className="flex flex-wrap items-center gap-2">
                       <span className="truncate font-display text-[15px] font-bold">{r.name}</span>
+                      {r.level ? <Badge tone="info">Lv{r.level}</Badge> : null}
                       {r.live ? <Badge tone="ok">Live</Badge> : <Badge>Closed</Badge>}
                       {r.isPrivate ? (
                         <Badge tone="info">
@@ -99,6 +114,8 @@ export function RoomsPage() {
                       Room ID {r.code} · Owner {host?.name ?? r.hostId} · {r.members} members
                       {r.category ? ` · ${r.category}` : ""}
                       {r.seats ? ` · ${r.seats} seats` : ""}
+                      {r.level && r.levelMembers ? ` · Lv${r.level} allows up to ${r.levelMembers.toLocaleString("en-IN")}` : ""}
+                      {r.exp !== undefined ? ` · ${r.exp.toLocaleString("en-IN")} EXP` : ""}
                     </p>
                   </div>
                   {can("rooms.edit") ? (
