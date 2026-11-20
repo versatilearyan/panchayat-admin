@@ -9,7 +9,8 @@ type Settings = { enabled: boolean; percent: number; minGiftCoins: number; offic
 type Summary = { holders: number; inCirculation: number; earnedThisWeek: number; spentThisWeek: number; officialRooms: number };
 type Holder = { userId: string; name: string; publicId: number; balance: number; earned: number; updatedAt: string };
 type Tx = { id: number; userId: string; name: string; publicId: number; amount: number; kind: "EARN" | "SPEND" | "GRANT" | "DEDUCT"; ref?: string; reason?: string | null; admin?: string | null; balanceAfter: number; at: string };
-type Room = { roomId: string; roomCode: number; name: string; status: string; title?: string | null; ownerName?: string | null; online: number; live: boolean };
+type RoomHost = { userId: string; name: string };
+type Room = { roomId: string; roomCode: number; name: string; status: string; title?: string | null; ownerName?: string | null; online: number; live: boolean; hosts: RoomHost[] };
 
 const KIND_TONE = { EARN: "ok", SPEND: "info", GRANT: "gold", DEDUCT: "coral" } as const;
 const fmt = (n: number) => Math.round(n).toLocaleString("en-IN");
@@ -30,9 +31,10 @@ export function PkSystemPage() {
   const [txUser, setTxUser] = useState("");
   const [rooms, setRooms] = useState<Room[] | null>(null);
   const [adj, setAdj] = useState({ user: "", amount: "", reason: "" });
-  const [newRoom, setNewRoom] = useState({ room: "", title: "" });
+  const [newRoom, setNewRoom] = useState({ room: "", title: "", hostUser: "" });
   const [battle, setBattle] = useState({ mode: "1v1", rule: "gifts", minutes: "10" });
   const [busy, setBusy] = useState<string | null>(null);
+  const [addHost, setAddHost] = useState<Record<string, string>>({});
 
   const loadSettings = useCallback(() => {
     apiRequest<Settings>("/api/v1/admin/pk/settings")
@@ -192,9 +194,10 @@ export function PkSystemPage() {
       </div>
 
       <Card title="Official PK rooms" className="mt-4">
-        <div className="grid gap-3 border-b border-line p-4 sm:grid-cols-[160px_1fr_auto]">
+        <div className="grid gap-3 border-b border-line p-4 sm:grid-cols-[160px_1fr_160px_auto]">
           <input className="field" inputMode="numeric" value={newRoom.room} onChange={(e) => setNewRoom((r) => ({ ...r, room: e.target.value.replace(/\D/g, "") }))} placeholder="Room ID" aria-label="Room ID" />
           <input className="field" maxLength={80} value={newRoom.title} onChange={(e) => setNewRoom((r) => ({ ...r, title: e.target.value }))} placeholder="Event title, e.g. Official PK King vs Queen" aria-label="Event title" />
+          <input className="field" inputMode="numeric" value={newRoom.hostUser} onChange={(e) => setNewRoom((r) => ({ ...r, hostUser: e.target.value.replace(/\D/g, "") }))} placeholder="Host admin ID (optional)" aria-label="Host admin ID" />
           <Button
             variant="primary"
             busy={busy === "room"}
@@ -202,7 +205,7 @@ export function PkSystemPage() {
             onClick={async () => {
               const ok = await run("room", () => apiRequest("/api/v1/admin/pk/rooms", { method: "POST", body: newRoom }), "Room is now an Official PK room");
               if (ok) {
-                setNewRoom({ room: "", title: "" });
+                setNewRoom({ room: "", title: "", hostUser: "" });
                 loadRooms();
               }
             }}
@@ -210,6 +213,7 @@ export function PkSystemPage() {
             <Swords className="h-4 w-4" aria-hidden /> Make Official PK
           </Button>
         </div>
+        <p className="border-b border-line px-4 py-2 text-xs text-muted">Host admin: made a room admin there, so they can set up, start and close its PK (1 vs 1 or multiplayer, any rule or length) from inside the app itself — add more below.</p>
         <div className="flex flex-wrap items-end gap-3 border-b border-line px-4 py-3">
           <Chips label="Mode" value={battle.mode} onChange={(v) => setBattle((b) => ({ ...b, mode: v }))} options={[{ value: "1v1", label: "1 vs 1" }, { value: "team", label: "Team" }]} />
           <Chips label="Rule" value={battle.rule} onChange={(v) => setBattle((b) => ({ ...b, rule: v }))} options={[{ value: "gifts", label: "By gifts" }, { value: "votes", label: "By votes" }]} />
@@ -226,8 +230,45 @@ export function PkSystemPage() {
                     {r.name} {r.live ? <Badge tone="coral">PK live</Badge> : null} {r.status !== "ACTIVE" ? <Badge>{r.status}</Badge> : null}
                   </p>
                   <p className="truncate text-xs text-muted">
-                    Room ID {r.roomCode} · {r.title || "no title"} · host {r.ownerName ?? "?"} · {r.online} online
+                    Room ID {r.roomCode} · {r.title || "no title"} · owner {r.ownerName ?? "?"} · {r.online} online
                   </p>
+                  <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+                    Host admins:{" "}
+                    {r.hosts.length ? (
+                      r.hosts.map((h) => (
+                        <Badge key={h.userId} tone="info">
+                          {h.name}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span>none yet</span>
+                    )}
+                  </p>
+                  <div className="mt-1.5 flex gap-2">
+                    <input
+                      className="field h-8 max-w-[160px] text-xs"
+                      inputMode="numeric"
+                      value={addHost[r.roomId] ?? ""}
+                      onChange={(e) => setAddHost((m) => ({ ...m, [r.roomId]: e.target.value.replace(/\D/g, "") }))}
+                      placeholder="Host admin ID"
+                      aria-label={`Add a host admin to ${r.name}`}
+                    />
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      busy={busy === `host${r.roomId}`}
+                      disabled={!addHost[r.roomId]}
+                      onClick={async () => {
+                        const ok = await run(`host${r.roomId}`, () => apiRequest(`/api/v1/admin/pk/rooms/${r.roomId}/host`, { method: "POST", body: { user: addHost[r.roomId] } }), "Host admin added");
+                        if (ok) {
+                          setAddHost((m) => ({ ...m, [r.roomId]: "" }));
+                          loadRooms();
+                        }
+                      }}
+                    >
+                      Add host
+                    </Button>
+                  </div>
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-2">
                   {r.live ? (
