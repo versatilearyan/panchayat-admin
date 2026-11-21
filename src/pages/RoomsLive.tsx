@@ -259,7 +259,7 @@ function RoomForm({ room, onClose, onSaved }: { room: LiveRoom | null; onClose: 
     setBusy(true);
     setError("");
     try {
-      const body = { name: name.trim(), description, category, maxParticipants: Number(seats), isPrivate, password: isPrivate && password ? password : undefined, ownerId: official ? undefined : owner?.id, official };
+      const body = { name: name.trim(), description, category, maxParticipants: Number(seats), isPrivate, password: isPrivate && password ? password : undefined, ownerId: owner?.id, official };
       if (room) await apiRequest(`${base}/${room.id}`, { method: "PATCH", body });
       else await apiRequest(`${base}`, { method: "POST", body });
       toast(room ? "Room saved" : "Room created. Everyone can see it in the app now.");
@@ -282,10 +282,10 @@ function RoomForm({ room, onClose, onSaved }: { room: LiveRoom | null; onClose: 
         <input type="checkbox" className="mt-1" checked={official} onChange={(e) => setOfficial(e.target.checked)} />
         <span>
           <b>Official room of Panchayat</b>
-          <span className="block text-xs text-muted">The Sarpanch owns it and always sits on the owner seat. The app shows it as an official room. You pick the room admins after creating it.</span>
+          <span className="block text-xs text-muted">The app shows it as an official room, in its own Official Rooms space. Pick who owns it below — any user can be the host and add their own admins; leave it blank for Sarpanch to own it.</span>
         </span>
       </label>
-      <div className={official ? "hidden" : ""}>
+      <div>
         <span className="label">Owner</span>
         {owner ? (
           <p className="mb-2 flex items-center gap-2 text-sm">

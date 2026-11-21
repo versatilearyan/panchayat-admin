@@ -227,6 +227,8 @@ export type RoomInput = {
   password?: string;
   vipOnly: boolean;
   announcement?: string;
+  /** An official Panchayat room: shows the Official badge and surfaces in the app's Official Rooms space. */
+  official?: boolean;
 };
 
 /** Everything the local demo store keeps. One JSON object in localStorage (uploaded files go to IndexedDB). */
@@ -321,6 +323,9 @@ export type AdminRoom = {
   exp?: number;
   level?: number;
   levelMembers?: number;
+  /** An official Panchayat room: shows the Official badge and surfaces in the app's Official Rooms space. */
+  official?: boolean;
+  extraSeats?: boolean;
 };
 
 export type AdminStats = {
