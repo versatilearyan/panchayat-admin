@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ComponentType } from "react";
-import { Activity, BadgeCheck, BarChart3, Coins, CreditCard, Dice5, FileClock, ScrollText, Flag, Gift, Image, IndianRupee, Mail, Landmark, LayoutDashboard, Lock, LogOut, MessagesSquare, Settings, ShoppingBag, UserCog, Users, Wallet, Crown, Gem, UsersRound, Sparkles, Eye, ListChecks, Tag, PartyPopper, Share2, ShieldCheck, Gamepad2, CalendarDays, Swords, Gift as GiftIcon } from "lucide-react";
+import { Activity, BadgeCheck, BarChart3, Coins, CreditCard, Dice5, FileClock, ScrollText, Flag, Gift, Image, IndianRupee, Mail, Landmark, LayoutDashboard, Lock, LogOut, MessagesSquare, Settings, ShoppingBag, UserCog, Users, Wallet, Crown, Gem, UsersRound, Sparkles, Eye, ListChecks, Tag, PartyPopper, Share2, ShieldCheck, ShieldAlert, Gamepad2, CalendarDays, Swords, Gift as GiftIcon } from "lucide-react";
 import { adminApi } from "./api";
 import { getSession, setSession, type AdminSession } from "./api/session";
 import { BACKEND_ENABLED } from "./config/api";
@@ -15,6 +15,7 @@ import { NameFramesPage } from "./pages/NameFrames";
 import { FestivalsPage } from "./pages/Festivals";
 import { ReportsPage } from "./pages/Reports";
 import { MomentsPage } from "./pages/Moments";
+import { ModerationPage } from "./pages/Moderation";
 import { ActivityPage } from "./pages/Activity";
 import { GiftsPage } from "./pages/Gifts";
 import { GiftsLivePage } from "./pages/GiftsLive";
@@ -92,6 +93,7 @@ const NAV: { page: Page; label: string; icon: typeof Users; child?: boolean }[] 
   { page: "rooms", label: "Rooms", icon: MessagesSquare },
   { page: "reports", label: "Reports", icon: Flag },
   { page: "moments", label: "Moments", icon: Image },
+  { page: "moderation", label: "Moderation", icon: ShieldAlert },
   { page: "gifts", label: "Gifts", icon: Gift },
   { page: "shop", label: "Shop items", icon: ShoppingBag },
   { page: "cpCouples", label: "CP couples", icon: Gem, child: true },
@@ -137,6 +139,7 @@ const PAGE_VIEW: Record<Page, ComponentType> = {
   rooms: RoomsPage,
   reports: ReportsPage,
   moments: MomentsPage,
+  moderation: ModerationPage,
   // With the backend connected, gifts are the server's; otherwise the demo page
   gifts: BACKEND_ENABLED ? GiftsLivePage : GiftsPage,
   rewards: SpendRewardsPage,
