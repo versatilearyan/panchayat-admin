@@ -19,6 +19,12 @@ export type ShopProduct = {
   wearSlot?: string | null;
   /** Entry effects: how the wearer's picture shows (OVERLAY, SLOT, SLOT:key, NONE; empty = OVERLAY). */
   entryAvatar?: string | null;
+  /** Optional, any category: played where the app shows an animation for this item. */
+  animationUrl?: string | null;
+  animationFormat?: string | null;
+  /** Set only for a Gifts-category item: the real gift's ID. Buying this then lands in the Package tab
+   *  of "Send a gift" (free to send), the same way a chest-won gift gets there. */
+  giftId?: string | null;
   active: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -36,6 +42,9 @@ export type ProductInput = {
   validDays: number;
   wearSlot: string;
   entryAvatar?: string;
+  animationUrl?: string;
+  animationFormat?: string;
+  giftId?: string;
 };
 
 const base = ENDPOINTS.shopProducts;

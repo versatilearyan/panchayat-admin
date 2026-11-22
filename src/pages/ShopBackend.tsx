@@ -208,11 +208,14 @@ function ProductForm({ product, categories, onClose, onAddCategory }: { product:
     wearSlot: product?.wearSlot ?? "",
     entryMode: (product?.entryAvatar ?? "OVERLAY").startsWith("SLOT") ? "SLOT" : (product?.entryAvatar ?? "OVERLAY"),
     entryKey: (product?.entryAvatar ?? "").startsWith("SLOT:") ? (product?.entryAvatar ?? "").slice(5) : "",
+    animationUrl: product?.animationUrl ?? "",
+    giftId: product?.giftId ?? "",
     active: product?.active ?? true,
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [upload, setUpload] = useState<AssetUploadState>("idle");
+  const [animUpload, setAnimUpload] = useState<AssetUploadState>("idle");
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((x) => ({ ...x, [k]: v }));
 
   // New products need an active category; an existing one keeps showing its current category
@@ -220,9 +223,9 @@ function ProductForm({ product, categories, onClose, onAddCategory }: { product:
   const price = Number(f.price);
   const order = Number(f.displayOrder);
   const days = Number(f.validDays);
-  const problem = upload === "uploading"
+  const problem = upload === "uploading" || animUpload === "uploading"
     ? "Wait for the image to finish uploading."
-    : upload === "failed"
+    : upload === "failed" || animUpload === "failed"
       ? "The image didn't upload. Try again, or remove it."
       : !f.categoryId
     ? categories.some((c) => c.active)
@@ -257,6 +260,9 @@ function ProductForm({ product, categories, onClose, onAddCategory }: { product:
       validDays: days,
       wearSlot: f.wearSlot,
       entryAvatar: f.entryMode === "SLOT" ? (f.entryKey.trim() ? `SLOT:${f.entryKey.trim()}` : "SLOT") : f.entryMode,
+      animationUrl: f.animationUrl.trim(),
+      animationFormat: f.animationUrl.trim() ? (f.animationUrl.split(/[?#]/)[0].split(".").pop() ?? "").toUpperCase() : "",
+      giftId: f.giftId.trim(),
     };
     try {
       const saved = product ? await shopProductService.update(product.id, body) : await shopProductService.create(body);
@@ -382,6 +388,20 @@ function ProductForm({ product, categories, onClose, onAddCategory }: { product:
           Image or SVGA <span className="normal-case tracking-normal text-muted/70">(shown in the app's Shop)</span>
         </label>
         <AssetUpload id="bp-asset" value={f.assetUrl} onChange={(ref) => set("assetUrl", ref)} onStateChange={setUpload} />
+      </div>
+      <div>
+        <label className="label" htmlFor="bp-animation">
+          Animation <span className="normal-case tracking-normal text-muted/70">(optional, any category)</span>
+        </label>
+        <AssetUpload id="bp-animation" value={f.animationUrl} onChange={(ref) => set("animationUrl", ref)} onStateChange={setAnimUpload} />
+        <p className="mt-1 text-xs text-muted">Leave empty if this item doesn't need one.</p>
+      </div>
+      <div>
+        <label className="label" htmlFor="bp-gift-id">
+          Gift ID <span className="normal-case tracking-normal text-muted/70">(optional — only for a Gifts-category item)</span>
+        </label>
+        <input id="bp-gift-id" className="field" value={f.giftId} onChange={(e) => set("giftId", e.target.value.trim())} placeholder="e.g. the ID shown on the Gifts page" />
+        <p className="mt-1 text-xs text-muted">Set this to a real gift's ID and buying this item lands in the Package tab of "Send a gift" (free to send), instead of the Bag.</p>
       </div>
       {product ? <Toggle checked={f.active} onChange={(v) => set("active", v)} label="On sale in the Shop" hint="Turn off to stop selling it." /> : null}
       {product ? <p className="text-xs text-muted">{[`ID ${product.id}`, updatedText(product.updatedAt)].filter(Boolean).join(" · ")}</p> : null}

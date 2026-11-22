@@ -19,6 +19,7 @@ export function SettingsPage() {
       {error ? <ErrorNote>{error}</ErrorNote> : null}
       {data ? <SettingsForm key={data.updatedAt} settings={data} /> : <Loading />}
       {BACKEND_ENABLED ? <MoveFromCloudinary /> : null}
+      {BACKEND_ENABLED ? <SilentObserverCard /> : null}
     </>
   );
 }
@@ -220,6 +221,55 @@ function MoveFromCloudinary() {
             ) : null}
           </div>
         ) : null}
+      </div>
+    </Card>
+  );
+}
+
+/** A trusted staff account that can join any password room without the password, invisibly, for
+ *  safety review (see VoiceRoomService.joinRoom on the backend). Super Admin only. */
+function SilentObserverCard() {
+  const { can, toast } = useAdmin();
+  const [userId, setUserId] = useState("");
+  const [busy, setBusy] = useState(false);
+  if (!can("settings.edit")) return null;
+
+  const setFlag = async (enabled: boolean) => {
+    const id = userId.trim();
+    if (!id) return toast("Type the account's user ID", "error");
+    setBusy(true);
+    try {
+      await apiRequest(`/api/v1/admin/users/${encodeURIComponent(id)}/silent-observer`, { method: "POST", body: { enabled } });
+      toast(enabled ? `Account ${id} can now join any password room invisibly, without the password` : `Account ${id}'s silent-observer access is off`);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Couldn't save", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card title="Silent observer (safety review)" className="mt-5">
+      <div className="space-y-3 px-4 py-4">
+        <p className="text-sm text-muted">
+          Turn this on for a trusted staff account's user ID, and that account can join any password-protected room without the
+          password — invisible to everyone there (not in the participant list, no join/leave notice, view and listen only, never
+          chat or mic). Every use is written to an audit log. Turning it on or off here doesn&apos;t touch the account otherwise.
+        </p>
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="flex-1">
+            <label className="label" htmlFor="so-uid">
+              User ID
+            </label>
+            <input id="so-uid" className="field" value={userId} onChange={(e) => setUserId(e.target.value.replace(/\D/g, ""))} placeholder="Internal user ID" inputMode="numeric" />
+          </div>
+          <Button variant="primary" busy={busy} disabled={!userId.trim()} onClick={() => void setFlag(true)}>
+            Turn on
+          </Button>
+          <Button variant="ghost" busy={busy} disabled={!userId.trim()} onClick={() => void setFlag(false)}>
+            Turn off
+          </Button>
+        </div>
       </div>
     </Card>
   );
