@@ -186,6 +186,8 @@ export type Pricing = {
 export type AppSettings = {
   maintenance: boolean;
   maintenanceMessage: string;
+  /** Expected end time (epoch ms), shown to users as a countdown. Does not turn maintenance off by itself. */
+  maintenanceUntil: number | null;
   /** Banner shown at the top of the app's home screen. Empty = none. */
   announcement: string;
   signupBonusCoins: number;

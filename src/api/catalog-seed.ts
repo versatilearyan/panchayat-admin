@@ -78,6 +78,7 @@ export const seedRedPackets = (): RedPacketPrice[] => [
 export const seedSettings = (): AppSettings => ({
   maintenance: false,
   maintenanceMessage: "Panchayat is getting an upgrade. We'll be back in a few minutes.",
+  maintenanceUntil: null,
   announcement: "",
   signupBonusCoins: 500,
   dailyCheckinCoins: 50,

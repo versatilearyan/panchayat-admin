@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle } from "lucide-react";
-import { adminApi, type AppSettings } from "../api";
+import { type AppSettings } from "../api";
 import { useAdmin } from "../context";
 import { BACKEND_ENABLED } from "../config/api";
 import { apiRequest } from "../lib/api";
@@ -8,9 +8,11 @@ import { Button, Card, ErrorNote, Loading, NumberField, PageHeader, timeAgo, Tog
 
 type Draft = Omit<AppSettings, "updatedAt" | "updatedBy">;
 
+const SETTINGS_PATH = "/api/v1/admin/settings";
+
 export function SettingsPage() {
   const { version } = useAdmin();
-  const { data, error } = useLoad(() => adminApi.getSettings(), [version]);
+  const { data, error } = useLoad(() => apiRequest<AppSettings>(SETTINGS_PATH), [version]);
   return (
     <>
       <PageHeader title="App settings" sub="Switches that change the Panchayat app for everyone." />
@@ -22,19 +24,26 @@ export function SettingsPage() {
 }
 
 function SettingsForm({ settings }: { settings: AppSettings }) {
-  const { changed, toast } = useAdmin();
+  const { can, changed, toast } = useAdmin();
+  const isSuper = can("settings.edit");
   const { updatedAt, updatedBy, ...initial } = settings;
   const [f, setF] = useState<Draft>(initial);
+  const [etaMinutes, setEtaMinutes] = useState(() => (initial.maintenanceUntil ? Math.max(1, Math.round((initial.maintenanceUntil - Date.now()) / 60_000)) : 10));
   const [busy, setBusy] = useState(false);
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setF((x) => ({ ...x, [k]: v }));
-  const dirty = JSON.stringify(f) !== JSON.stringify(initial);
+  const dirty = JSON.stringify(f) !== JSON.stringify(initial) || (f.maintenance && etaMinutes !== Math.max(1, Math.round(((initial.maintenanceUntil ?? 0) - Date.now()) / 60_000)));
 
   const save = async () => {
-    if (f.maintenance && !initial.maintenance && !window.confirm("Turn on maintenance mode? Every user is locked out of the app until you turn it off.")) return;
+    const turningOn = f.maintenance && !initial.maintenance;
+    if (turningOn && !window.confirm("Turn on maintenance mode? Every user is locked out of the app, and everyone with the app open right now gets an email about it.")) return;
     setBusy(true);
     try {
-      await adminApi.saveSettings({ ...f, signupBonusCoins: f.signupBonusCoins || 0, dailyCheckinCoins: f.dailyCheckinCoins || 0, roomCreateMinLevel: f.roomCreateMinLevel || 0 });
-      toast("Settings saved");
+      const maintenanceUntil = f.maintenance ? Date.now() + etaMinutes * 60_000 : null;
+      await apiRequest<AppSettings>(SETTINGS_PATH, {
+        method: "PUT",
+        body: { ...f, maintenanceUntil, signupBonusCoins: f.signupBonusCoins || 0, dailyCheckinCoins: f.dailyCheckinCoins || 0, roomCreateMinLevel: f.roomCreateMinLevel || 0 },
+      });
+      toast(turningOn ? "Maintenance mode is on" : "Settings saved");
       changed();
     } catch (e) {
       toast(e instanceof Error ? e.message : "Couldn't save", "error");
@@ -50,7 +59,7 @@ function SettingsForm({ settings }: { settings: AppSettings }) {
           <Toggle checked={f.maintenance} onChange={(v) => set("maintenance", v)} label="Maintenance mode" hint="Closes the app for all users and shows the message below. Staff can still use this panel." />
           {f.maintenance ? (
             <p className="flex items-center gap-2 rounded-xl bg-[#3a1418] px-3.5 py-2.5 text-sm text-[#ffb0b4]">
-              <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden /> The app will be closed for everyone after you save.
+              <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden /> The app will be closed for everyone after you save, and everyone with it open now gets an email.
             </p>
           ) : null}
           <div>
@@ -59,6 +68,15 @@ function SettingsForm({ settings }: { settings: AppSettings }) {
             </label>
             <textarea id="st-mm" rows={2} className="field resize-none" value={f.maintenanceMessage} onChange={(e) => set("maintenanceMessage", e.target.value)} />
           </div>
+          {f.maintenance ? (
+            <div>
+              <label className="label" htmlFor="st-eta">
+                Expected downtime
+              </label>
+              <NumberField id="st-eta" value={etaMinutes} onChange={(n) => setEtaMinutes(Math.max(1, n))} suffix="minutes" />
+              <p className="mt-1 text-xs text-muted">Shown to users as a countdown. Doesn't turn maintenance off by itself — come back here when it's actually fixed.</p>
+            </div>
+          ) : null}
         </div>
       </Card>
 
@@ -111,6 +129,7 @@ function SettingsForm({ settings }: { settings: AppSettings }) {
         </div>
       </Card>
 
+      {!isSuper ? <p className="text-xs text-muted">Only Super Admin can change these switches.</p> : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-muted">
           Last changed by {updatedBy} · {timeAgo(updatedAt)}
@@ -119,7 +138,7 @@ function SettingsForm({ settings }: { settings: AppSettings }) {
           <Button variant="ghost" disabled={!dirty} onClick={() => setF(initial)}>
             Undo changes
           </Button>
-          <Button variant={f.maintenance && !initial.maintenance ? "danger" : "primary"} busy={busy} disabled={!dirty} onClick={save}>
+          <Button variant={f.maintenance && !initial.maintenance ? "danger" : "primary"} busy={busy} disabled={!dirty || !isSuper} onClick={save}>
             Save settings
           </Button>
         </div>
