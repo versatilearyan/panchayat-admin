@@ -364,9 +364,9 @@ function GiftEditor({ gift, onChange, onClose, cats }: { gift: ServerGift; onCha
         />
         <UploadSlot
           label="Sound"
-          hint="MP3 · up to 20 MB · plays with the animation"
-          exts={["mp3"]}
-          current={{ url: gift.soundUrl, format: gift.soundUrl ? "MP3" : null }}
+          hint="MP3 or M4A · up to 20 MB · plays with the animation"
+          exts={["mp3", "m4a"]}
+          current={{ url: gift.soundUrl, format: gift.soundUrl ? gift.soundUrl.toLowerCase().endsWith(".m4a") ? "M4A" : "MP3" : null }}
           upload={(f, p) => giftCatalogService.upload(gift.id, "sound", f, p)}
           onDone={(g) => done(g, "Sound uploaded")}
           onRemove={async () => done(await giftCatalogService.removeFile(gift.id, "sound"), "Sound removed")}

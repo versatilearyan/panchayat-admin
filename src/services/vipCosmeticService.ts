@@ -2,7 +2,7 @@
  * VIP cosmetics on the backend: /api/v1/admin/vip/cosmetics. SUPER_ADMIN only.
  *
  *   GET  /api/v1/admin/vip/cosmetics          → every uploaded cosmetic
- *   POST /api/v1/admin/vip/cosmetics/upload   multipart: file, vipLevel (1–7), type, format
+ *   POST /api/v1/admin/vip/cosmetics/upload   multipart: file, vipLevel (1–11), type, format
  *
  * The backend stores each file on Cloudinary and keeps one asset per VIP level + type +
  * format. There is no replace or delete endpoint yet, so the panel never pretends to
@@ -12,7 +12,7 @@
 import { ENDPOINTS } from "../config/api";
 import { apiRequest, apiUpload, ApiError, unwrap, type Upload } from "../lib/api";
 
-export const VIP_LEVELS = [1, 2, 3, 4, 5, 6, 7] as const;
+export const VIP_LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] as const;
 export type CosmeticType = "FRAME" | "BUBBLE" | "ENTRY" | "BADGE";
 export type CosmeticFormat = "SVGA" | "PNG";
 

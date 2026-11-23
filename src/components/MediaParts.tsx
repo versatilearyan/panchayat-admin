@@ -18,7 +18,7 @@ export type Media = { url: string | null; format: string | null };
  */
 export const mediaHref = (url: string | null | undefined): string | null => (!url ? null : url.startsWith("/") ? `${API_BASE_URL}${url}` : url);
 
-const MAX_MB: Record<string, number> = { png: 10, jpg: 10, jpeg: 10, svga: 100, mp4: 100, mp3: 20 };
+const MAX_MB: Record<string, number> = { png: 10, jpg: 10, jpeg: 10, svga: 100, mp4: 100, mp3: 20, m4a: 20 };
 
 /** Format from a URL or file name (".../x.svga" → SVGA). */
 export const formatOf = (name: string) => (name.split("?")[0].split(".").pop() ?? "").toUpperCase();

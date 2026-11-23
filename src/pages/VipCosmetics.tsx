@@ -221,10 +221,10 @@ function Select({ label, value, onChange, options }: { label: string; value: str
 /* ---------- summary and levels ---------- */
 
 function Summary({ rows }: { rows: VipCosmetic[] }) {
-  const levels = new Set(rows.map((r) => r.vipLevel).filter((l) => l >= 1 && l <= 7)).size;
+  const levels = new Set(rows.map((r) => r.vipLevel).filter((l) => (VIP_LEVELS as readonly number[]).includes(l))).size;
   const stats: [string, string][] = [
     ["Total assets", String(rows.length)],
-    ["VIP levels configured", `${levels} / 7`],
+    ["VIP levels configured", `${levels} / ${VIP_LEVELS.length}`],
     ["SVGA assets", String(rows.filter((r) => r.format === "SVGA").length)],
     ["PNG assets", String(rows.filter((r) => r.format === "PNG").length)],
   ];
@@ -259,7 +259,7 @@ function levelState(rows: VipCosmetic[], level: number): LevelState {
 function LevelsOverview({ rows, active, onPick }: { rows: VipCosmetic[]; active: number | ""; onPick: (level: number) => void }) {
   return (
     <Card title={<span className="flex items-center gap-2"><Layers className="h-4 w-4 text-gold" aria-hidden /> VIP levels</span>}>
-      <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7" data-testid="levels">
+      <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-6" data-testid="levels">
         {VIP_LEVELS.map((l) => {
           const s = levelState(rows, l);
           const status = s.done === 4 ? "Complete" : s.done === 0 ? "Not Configured" : "Partially Configured";

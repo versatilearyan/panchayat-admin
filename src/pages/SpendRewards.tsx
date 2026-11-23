@@ -352,6 +352,7 @@ function ItemForm({ rule, item, gifts, onSaved, onClose }: { rule: RewardRule; i
   const [forever, setForever] = useState(item ? item.durationDays === null : false);
   const [days, setDays] = useState(item?.durationDays ?? 7);
   const [enabled, setEnabled] = useState(item?.enabled ?? true);
+  const [layoutLevel, setLayoutLevel] = useState(item?.layoutLevel ?? 1);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const types = typesList.data ?? ["GIFT", "CHAT_BUBBLE", "ENTRY_EFFECT", "PROFILE_EFFECT"];
@@ -372,6 +373,7 @@ function ItemForm({ rule, item, gifts, onSaved, onClose }: { rule: RewardRule; i
       priority,
       enabled,
       ...(forever ? { forever: true } : { durationDays: days }),
+      ...(finalType === "GIFT" ? {} : { layoutLevel }),
     };
     try {
       const r = item ? await rewardService.updateItem(item.id, body) : await rewardService.addItem(rule.id, body);
@@ -446,6 +448,17 @@ function ItemForm({ rule, item, gifts, onSaved, onClose }: { rule: RewardRule; i
           )}
         </Field>
       </div>
+      {finalType !== "GIFT" ? (
+        <Field id="item-layout" label="Resolution (fits like)" hint="The file has no size of its own; pick the VIP level whose frame/bubble/entry/badge fit matches it best">
+          <select id="item-layout" className="field" value={layoutLevel} onChange={(e) => setLayoutLevel(Number(e.target.value))}>
+            {Array.from({ length: 11 }, (_, i) => i + 1).map((l) => (
+              <option key={l} value={l}>
+                VIP {l}
+              </option>
+            ))}
+          </select>
+        </Field>
+      ) : null}
       <div className="flex flex-wrap gap-6">
         <Toggle checked={forever} onChange={setForever} label="Never expires" />
         <Toggle checked={enabled} onChange={setEnabled} label="Can drop" hint={rule.kind === "RANDOM" ? "Off = never chosen in the draw" : "Off = not given"} />
@@ -476,9 +489,9 @@ function ItemForm({ rule, item, gifts, onSaved, onClose }: { rule: RewardRule; i
           />
           <UploadSlot
             label="Sound (optional)"
-            hint="MP3 · plays with the animation"
-            exts={["mp3"]}
-            current={{ url: item.soundUrl, format: item.soundUrl ? "MP3" : null }}
+            hint="MP3 or M4A · plays with the animation"
+            exts={["mp3", "m4a"]}
+            current={{ url: item.soundUrl, format: item.soundUrl ? item.soundUrl.toLowerCase().endsWith(".m4a") ? "M4A" : "MP3" : null }}
             upload={(f, p) => rewardService.upload(item.id, "sound", f, p)}
             onDone={(r) => fileDone(r, "Sound uploaded")}
             onRemove={async () => fileDone(await rewardService.removeFile(item.id, "sound"), "Sound removed")}

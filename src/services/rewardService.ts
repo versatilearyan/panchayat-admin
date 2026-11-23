@@ -26,6 +26,8 @@ export type RewardItem = {
   soundUrl: string | null;
   /** RANDOM: this item's chance per win; GUARANTEED: 100 when enabled. */
   chancePercent: number;
+  /** Which VIP level's frame/bubble/entry/badge fit (size and position) this effect's file is drawn into. 1-11. */
+  layoutLevel: number;
 };
 
 export type RewardRule = {
@@ -54,6 +56,8 @@ export type ItemInput = {
   durationDays?: number | null;
   /** true = never expires (clears durationDays). */
   forever?: boolean;
+  /** Which VIP level's fit (frame size/position, bubble box, entry ratio, badge band) this item's file uses. 1-11. */
+  layoutLevel?: number;
 };
 
 export type RewardGrant = {
