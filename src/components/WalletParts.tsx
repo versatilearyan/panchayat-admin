@@ -102,7 +102,7 @@ export function ProductImage({ url, name, size = 44 }: { url?: string | null; na
   const asset = useAsset(url);
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [url]);
-  if (asset.url && !failed) return <AssetMedia key={asset.url} src={asset.url} svga={false} size={size} alt={name} onFail={() => setFailed(true)} />;
+  if (asset.url && !failed) return <AssetMedia key={asset.url} src={asset.url} kind="image" size={size} alt={name} onFail={() => setFailed(true)} />;
   const broken = Boolean(url && (asset.error || failed));
   return (
     <span className="grid shrink-0 place-items-center rounded-xl bg-cream/[0.06] font-display font-bold text-cream/70" style={{ width: size, height: size }} title={broken ? (asset.error ?? "The image didn't load") : url ? undefined : "No image yet"}>

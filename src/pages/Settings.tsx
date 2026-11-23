@@ -90,23 +90,28 @@ function SettingsForm({ settings }: { settings: AppSettings }) {
         </div>
       </Card>
 
+      <Card title="APK download banner">
+        <div className="space-y-4 px-4 py-4">
+          <Toggle checked={f.apkBannerEnabled} onChange={(v) => set("apkBannerEnabled", v)} label="Show on the website" hint="The scrolling banner on the home screen, outside the Android app. Off hides it everywhere." />
+          <div>
+            <label className="label" htmlFor="st-apk-text">
+              Main text
+            </label>
+            <input id="st-apk-text" className="field" value={f.apkBannerText} onChange={(e) => set("apkBannerText", e.target.value)} placeholder="e.g. Install the Panchayat app (APK) from panchayat.world/download" />
+          </div>
+          <div>
+            <label className="label" htmlFor="st-apk-soon">
+              Highlighted part <span className="normal-case tracking-normal text-muted/70">(leave empty for none)</span>
+            </label>
+            <input id="st-apk-soon" className="field" value={f.apkBannerSoon} onChange={(e) => set("apkBannerSoon", e.target.value)} placeholder="e.g. Coming soon on Google Play, or Now on Google Play" />
+          </div>
+        </div>
+      </Card>
+
       <Card title="Coins and rewards">
-        <div className="grid gap-4 px-4 py-4 sm:grid-cols-2">
-          <div>
-            <label className="label" htmlFor="st-bonus">
-              Sign-up bonus
-            </label>
-            <NumberField id="st-bonus" value={f.signupBonusCoins} onChange={(n) => set("signupBonusCoins", n)} suffix="coins" />
-          </div>
-          <div>
-            <label className="label" htmlFor="st-daily">
-              Daily check-in reward
-            </label>
-            <NumberField id="st-daily" value={f.dailyCheckinCoins} onChange={(n) => set("dailyCheckinCoins", n)} suffix="coins" />
-          </div>
-          <div className="sm:col-span-2">
-            <Toggle checked={f.giftingEnabled} onChange={(v) => set("giftingEnabled", v)} label="Gifting on" hint="Turn off to stop all gift sending, for example while fixing a pricing mistake." />
-          </div>
+        <div className="px-4 py-4">
+          <Toggle checked={f.giftingEnabled} onChange={(v) => set("giftingEnabled", v)} label="Gifting on" hint="Turn off to stop all gift sending, for example while fixing a pricing mistake." />
+          <p className="mt-3 text-xs text-muted">The welcome red packet is set from the Referrals page, and the daily check-in reward from the Daily rewards page — not here.</p>
         </div>
       </Card>
 

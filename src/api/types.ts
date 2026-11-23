@@ -197,6 +197,10 @@ export type AppSettings = {
   /** Users below this level can't create rooms. */
   roomCreateMinLevel: number;
   minAppVersion: string;
+  /** The scrolling "install the APK" banner on the website (outside the Android app). */
+  apkBannerEnabled: boolean;
+  apkBannerText: string;
+  apkBannerSoon: string;
   updatedAt: number;
   updatedBy: string;
 };

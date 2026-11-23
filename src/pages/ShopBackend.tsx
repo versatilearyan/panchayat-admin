@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { Coins, FolderOpen, FolderPlus, ImageOff, Plus } from "lucide-react";
 import { useAdmin } from "../context";
 import { AssetMedia, AssetUpload, useAsset, type AssetUploadState } from "../components/AssetUpload";
-import { isSvgaRef } from "../services/shopAssetService";
+import { isMp4Ref, isSvgaRef } from "../services/shopAssetService";
 import { Badge, Button, Card, Chips, Empty, ErrorNote, fmtCoins, Loading, Modal, PageHeader, timeAgo, Toggle, useLoad } from "../components/ui";
 import { shopCategoryService, type CategoryInput, type ShopCategory } from "../services/shopCategoryService";
 import { shopProductService, type ProductInput, type ShopProduct } from "../services/shopProductService";
@@ -37,7 +37,7 @@ function urlProblem(v: string) {
 function Thumb({ url, name, size = 48 }: { url?: string | null; name: string; size?: number }) {
   const asset = useAsset(url);
   const [failed, setFailed] = useState(false);
-  if (asset.url && !failed) return <AssetMedia key={asset.url} src={asset.url} svga={isSvga(url)} size={size} onFail={() => setFailed(true)} />;
+  if (asset.url && !failed) return <AssetMedia key={asset.url} src={asset.url} kind={isSvga(url) ? "svga" : isMp4Ref(url) ? "mp4" : "image"} size={size} onFail={() => setFailed(true)} />;
   const broken = Boolean(url && (asset.error || failed));
   return (
     <span className="grid shrink-0 place-items-center rounded-xl bg-cream/[0.06] font-display font-bold text-cream/80" style={{ width: size, height: size }} title={asset.error ?? undefined}>

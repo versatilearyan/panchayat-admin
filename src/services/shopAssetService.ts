@@ -6,8 +6,10 @@ import { getSession } from "../api/session";
 export const ASSET_MAX_BYTES = 5 * 1024 * 1024;
 /** Same limit as pictures, matching the backend. */
 export const SVGA_MAX_BYTES = 5 * 1024 * 1024;
-export const ASSET_ACCEPT = ".png,.jpg,.jpeg,.webp,.svg,.svga,image/png,image/jpeg,image/webp,image/svg+xml";
-export const ASSET_KINDS_TEXT = "PNG, JPG, JPEG, WEBP, SVG or SVGA";
+/** MP4 is heavier than a picture or SVGA, matching the backend's own limit for this upload. */
+export const MP4_MAX_BYTES = 20 * 1024 * 1024;
+export const ASSET_ACCEPT = ".png,.jpg,.jpeg,.webp,.svg,.svga,.mp4,image/png,image/jpeg,image/webp,image/svg+xml,video/mp4";
+export const ASSET_KINDS_TEXT = "PNG, JPG, JPEG, WEBP, SVG, SVGA or MP4";
 const ASSET_TYPES: Record<string, string[]> = {
   png: ["image/png"],
   jpg: ["image/jpeg"],
@@ -16,10 +18,13 @@ const ASSET_TYPES: Record<string, string[]> = {
   svg: ["image/svg+xml"],
   // Browsers don't know SVGA; they send no type or a generic one
   svga: ["", "application/octet-stream", "application/x-svga", "application/svga", "application/zip"],
+  mp4: ["video/mp4"],
 };
 
 /** True when the link or file name ends in .svga (any ?query or #hash ignored). */
 export const isSvgaRef = (ref?: string | null) => Boolean(ref && /\.svga$/i.test(ref.split(/[?#]/)[0]));
+/** True when the link or file name ends in .mp4 (any ?query or #hash ignored). */
+export const isMp4Ref = (ref?: string | null) => Boolean(ref && /\.mp4$/i.test(ref.split(/[?#]/)[0]));
 
 /** Why this file can't be uploaded, or null. The backend checks again; this only saves a wasted upload. */
 export function assetFileProblem(file: File): string | null {
@@ -28,7 +33,7 @@ export function assetFileProblem(file: File): string | null {
   // Some systems send no type for a file; then the extension decides
   if (!types || (file.type && !types.includes(file.type))) return `“${file.name}” isn't a supported file. Use ${ASSET_KINDS_TEXT}.`;
   if (file.size === 0) return `“${file.name}” is empty.`;
-  const max = ext === "svga" ? SVGA_MAX_BYTES : ASSET_MAX_BYTES;
+  const max = ext === "svga" ? SVGA_MAX_BYTES : ext === "mp4" ? MP4_MAX_BYTES : ASSET_MAX_BYTES;
   if (file.size > max) return `“${file.name}” is ${(file.size / 1024 / 1024).toFixed(1)} MB. The limit is ${max / 1024 / 1024} MB.`;
   return null;
 }

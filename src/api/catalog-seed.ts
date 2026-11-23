@@ -86,6 +86,9 @@ export const seedSettings = (): AppSettings => ({
   roomCreationEnabled: true,
   roomCreateMinLevel: 0,
   minAppVersion: "1.0.0",
+  apkBannerEnabled: true,
+  apkBannerText: "📲 Install the Panchayat app (APK) from panchayat.world/download",
+  apkBannerSoon: "Coming soon on Google Play",
   updatedAt: t0,
   updatedBy: by,
 });

@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { ImageOff, ImageUp, Loader2, RotateCcw, X } from "lucide-react";
-import { ASSET_ACCEPT, ASSET_KINDS_TEXT, assetFileProblem, isSvgaRef, loadAsset, uploadShopAsset } from "../services/shopAssetService";
+import { ASSET_ACCEPT, ASSET_KINDS_TEXT, assetFileProblem, isMp4Ref, isSvgaRef, loadAsset, uploadShopAsset } from "../services/shopAssetService";
 import { SvgaPlayer } from "./media";
 import { Button } from "./ui";
 
@@ -28,19 +28,17 @@ export function useAsset(ref?: string | null) {
 
 const fileSize = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
 
-/**
- * Shows an uploaded asset: a picture with <img>, an SVGA animation with the SVGA player.
- * When the type isn't known (the product API doesn't send assetType and the link has no
- * .svga ending), it tries a picture first and then the SVGA player before giving up.
- */
-export function AssetMedia({ src, svga, size, alt = "", onFail }: { src: string; svga: boolean; size: number; alt?: string; onFail?: (msg: string) => void }) {
-  const [mode, setMode] = useState<"image" | "svga" | "failed">(svga ? "svga" : "image");
+export type AssetKind = "image" | "svga" | "mp4";
+
+/** Shows an uploaded asset: a picture with <img>, an SVGA animation with the SVGA player, or an MP4 with a looping, muted <video>. */
+export function AssetMedia({ src, kind, size, alt = "", onFail }: { src: string; kind: AssetKind; size: number; alt?: string; onFail?: (msg: string) => void }) {
+  const [mode, setMode] = useState<AssetKind | "failed">(kind);
   const failRef = useRef(onFail);
   failRef.current = onFail;
-  useEffect(() => setMode(svga ? "svga" : "image"), [src, svga]);
+  useEffect(() => setMode(kind), [src, kind]);
   useEffect(() => {
-    if (mode === "failed") failRef.current?.(svga ? "This SVGA animation couldn't be played. Make sure it's an SVGA 2.x file." : "This file couldn't be shown as a picture or an SVGA animation.");
-  }, [mode, svga]);
+    if (mode === "failed") failRef.current?.(kind === "svga" ? "This SVGA animation couldn't be played. Make sure it's an SVGA 2.x file." : kind === "mp4" ? "This MP4 couldn't be played." : "This file couldn't be shown as a picture or an animation.");
+  }, [mode, kind]);
   const box = { width: size, height: size };
   if (mode === "svga")
     return (
@@ -48,7 +46,11 @@ export function AssetMedia({ src, svga, size, alt = "", onFail }: { src: string;
         <SvgaPlayer key={src} src={src} className="h-full w-full" loop onError={() => setMode("failed")} />
       </span>
     );
-  if (mode === "image") return <img src={src} alt={alt} style={box} className="shrink-0 rounded-xl object-contain" onError={() => setMode(svga ? "failed" : "svga")} />;
+  if (mode === "mp4")
+    return (
+      <video key={src} src={src} style={box} className="shrink-0 rounded-xl object-contain" autoPlay loop muted playsInline onError={() => setMode("failed")} />
+    );
+  if (mode === "image") return <img src={src} alt={alt} style={box} className="shrink-0 rounded-xl object-contain" onError={() => setMode("failed")} />;
   return (
     <span className="grid shrink-0 place-items-center rounded-xl bg-cream/[0.06]" style={box}>
       <ImageOff className="h-4 w-4 text-muted" aria-label="File didn't load" />
@@ -149,19 +151,27 @@ export function AssetUpload({ id, value, onChange, onStateChange }: Props) {
   const pct = Math.round((progress ?? 0) * 100);
   // While uploading or after a failure show the picked file; once saved, the backend's copy
   const showLocal = uploading || failed;
-  const typeOf = (ref: string) => (uploadedType?.ref === ref && uploadedType.type ? uploadedType.type === "SVGA" : isSvgaRef(ref));
-  const svga = showLocal ? Boolean(file && isSvgaRef(file.name)) : value ? typeOf(value) : Boolean(file && isSvgaRef(file.name));
+  const kindOfName = (name: string): AssetKind => (isSvgaRef(name) ? "svga" : isMp4Ref(name) ? "mp4" : "image");
+  const kindOf = (ref: string): AssetKind => {
+    const given = uploadedType?.ref === ref ? uploadedType.type : undefined;
+    if (given === "SVGA") return "svga";
+    if (given === "MP4") return "mp4";
+    if (given) return "image";
+    return kindOfName(ref);
+  };
+  const kind: AssetKind = showLocal ? (file ? kindOfName(file.name) : "image") : value ? kindOf(value) : file ? kindOfName(file.name) : "image";
   const shown = showLocal ? localUrl : remote.url;
   const loadError = !showLocal && value ? (remote.error ?? mediaError) : null;
-  const kindLabel = svga ? "SVGA animation" : "Image";
+  const kindLabel = kind === "svga" ? "SVGA animation" : kind === "mp4" ? "MP4 animation" : "Image";
+  const big = kind !== "image";
 
   return (
     <div>
       <input ref={input} id={id} type="file" accept={ASSET_ACCEPT} className="sr-only" onChange={(e) => pick(e.target.files?.[0])} disabled={uploading} />
       <div className="flex flex-col gap-3 rounded-xl bg-ink px-3 py-3 ring-1 ring-line sm:flex-row sm:items-center">
-        <div className={`grid shrink-0 place-items-center overflow-hidden rounded-xl bg-cream/[0.06] ${svga && shown ? "h-28 w-28" : "h-20 w-20"}`}>
+        <div className={`grid shrink-0 place-items-center overflow-hidden rounded-xl bg-cream/[0.06] ${big && shown ? "h-28 w-28" : "h-20 w-20"}`}>
           {shown ? (
-            <AssetMedia key={shown} src={shown} svga={svga} size={svga ? 112 : 80} alt={`${kindLabel} preview`} onFail={(m) => (showLocal ? setError(m) : setMediaError(m))} />
+            <AssetMedia key={shown} src={shown} kind={kind} size={big ? 112 : 80} alt={`${kindLabel} preview`} onFail={(m) => (showLocal ? setError(m) : setMediaError(m))} />
           ) : remote.loading && value ? (
             <Loader2 className="h-5 w-5 animate-spin text-muted" aria-label="Loading preview" />
           ) : loadError ? (
@@ -196,7 +206,7 @@ export function AssetUpload({ id, value, onChange, onStateChange }: Props) {
           ) : value ? (
             <p className="mt-1 flex flex-wrap items-center gap-2">
               <span className="text-ok">{file ? "Uploaded" : "Saved with this product"}</span>
-              <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wider uppercase ring-1 ${svga ? "bg-coral/15 text-[#ff9095] ring-coral/30" : "bg-cream/[0.06] text-muted ring-line-strong"}`}>{kindLabel}</span>
+              <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wider uppercase ring-1 ${kind !== "image" ? "bg-coral/15 text-[#ff9095] ring-coral/30" : "bg-cream/[0.06] text-muted ring-line-strong"}`}>{kindLabel}</span>
             </p>
           ) : (
             <p className="mt-1 leading-snug text-muted">{ASSET_KINDS_TEXT}, up to 5 MB.</p>
