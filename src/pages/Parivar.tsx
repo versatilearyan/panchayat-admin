@@ -779,7 +779,6 @@ const EXTRA_FIELDS: { key: string; label: string; type: "bool" | "int" | "enum";
   { key: "stealEnabled", label: "Chori is on", type: "bool", group: "Chori (steal)", hint: "Off by default. Even when on, each Parivar's Mukhiya decides if members may use it." },
   { key: "stealMinLevel", label: "Parivar level needed", type: "int", group: "Chori (steal)" },
   { key: "stealDailyAttempts", label: "Attempts per Parivar per day", type: "int", group: "Chori (steal)" },
-  { key: "stealCooldownMinutes", label: "Cooldown (minutes)", type: "int", group: "Chori (steal)" },
   { key: "stealSuccessPercent", label: "Success chance %", type: "int", group: "Chori (steal)" },
   { key: "stealTakePercent", label: "Share taken from the treasury %", type: "int", group: "Chori (steal)" },
   { key: "stealMaxTake", label: "Most that can be taken", type: "int", group: "Chori (steal)" },
