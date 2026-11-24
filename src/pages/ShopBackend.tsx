@@ -10,6 +10,7 @@ import { isMp4Ref, isSvgaRef } from "../services/shopAssetService";
 import { Badge, Button, Card, Chips, Empty, ErrorNote, fmtCoins, Loading, Modal, PageHeader, timeAgo, Toggle, useLoad } from "../components/ui";
 import { shopCategoryService, type CategoryInput, type ShopCategory } from "../services/shopCategoryService";
 import { shopProductService, type ProductInput, type ShopProduct } from "../services/shopProductService";
+import { giftCatalogService } from "../services/giftCatalogService";
 
 type View = "products" | "categories";
 
@@ -205,7 +206,8 @@ function ProductForm({ product, categories, onClose, onAddCategory }: { product:
     assetUrl: product?.assetUrl ?? "",
     displayOrder: String(product?.displayOrder ?? 0),
     validDays: String(product?.validDays ?? 0),
-    wearSlot: product?.wearSlot ?? "",
+    // A Shop item linked to a gift goes to the Package (like chest gifts): shown as "Gift" here
+    wearSlot: product?.giftId ? "GIFT" : (product?.wearSlot ?? ""),
     entryMode: (product?.entryAvatar ?? "OVERLAY").startsWith("SLOT") ? "SLOT" : (product?.entryAvatar ?? "OVERLAY"),
     entryKey: (product?.entryAvatar ?? "").startsWith("SLOT:") ? (product?.entryAvatar ?? "").slice(5) : "",
     animationUrl: product?.animationUrl ?? "",
@@ -215,6 +217,7 @@ function ProductForm({ product, categories, onClose, onAddCategory }: { product:
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [upload, setUpload] = useState<AssetUploadState>("idle");
+  const gifts = useLoad(() => giftCatalogService.list(), []);
   const [animUpload, setAnimUpload] = useState<AssetUploadState>("idle");
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((x) => ({ ...x, [k]: v }));
 
@@ -246,6 +249,10 @@ function ProductForm({ product, categories, onClose, onAddCategory }: { product:
 
   const save = async () => {
     if (busy || problem) return;
+    if (f.wearSlot === "GIFT" && !f.giftId.trim()) {
+      setError("Choose which gift goes to the Package.");
+      return;
+    }
     setBusy(true);
     setError(null);
     const cat = categories.find((c) => String(c.id) === f.categoryId);
@@ -258,11 +265,12 @@ function ProductForm({ product, categories, onClose, onAddCategory }: { product:
       assetUrl: f.assetUrl.trim(),
       displayOrder: order,
       validDays: days,
-      wearSlot: f.wearSlot,
+      wearSlot: f.wearSlot === "GIFT" ? "NONE" : f.wearSlot,
       entryAvatar: f.entryMode === "SLOT" ? (f.entryKey.trim() ? `SLOT:${f.entryKey.trim()}` : "SLOT") : f.entryMode,
       animationUrl: f.animationUrl.trim(),
       animationFormat: f.animationUrl.trim() ? (f.animationUrl.split(/[?#]/)[0].split(".").pop() ?? "").toUpperCase() : "",
-      giftId: f.giftId.trim(),
+      // Only a "Gift" item keeps the gift link (changing it to something else removes the link)
+      giftId: f.wearSlot === "GIFT" ? f.giftId.trim() : "",
     };
     try {
       const saved = product ? await shopProductService.update(product.id, body) : await shopProductService.create(body);
@@ -355,8 +363,23 @@ function ProductForm({ product, categories, onClose, onAddCategory }: { product:
             <option value="PROFILE">Profile effect</option>
             <option value="BADGE">Badge</option>
             <option value="NONE">Not wearable (just kept in the Bag)</option>
+            <option value="GIFT">Gift (goes to the Package, like chest gifts)</option>
           </select>
-          <p className="mt-1 text-xs text-muted">Wearable items go to the Bag, where the buyer can wear and take them off.</p>
+          {f.wearSlot === "GIFT" ? (
+            <>
+              <select className="field mt-2" value={f.giftId} onChange={(e) => set("giftId", e.target.value)} aria-label="Which gift">
+                <option value="">Choose the gift…</option>
+                {(gifts.data ?? []).map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name} · {fmtCoins(g.price)} coins{g.active ? "" : " (off sale)"}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-muted">After buying, this gift lands in the Package tab of "Send a gift" (free to send), the same place chest gifts go. Buying 2 gives 2.</p>
+            </>
+          ) : (
+            <p className="mt-1 text-xs text-muted">Wearable items go to the Bag, where the buyer can wear and take them off.</p>
+          )}
         </div>
       </div>
       {f.wearSlot === "ENTRY" || (!f.wearSlot && /entry|entrance/i.test(categories.find((c) => String(c.id) === f.categoryId)?.name ?? "")) ? (
@@ -396,13 +419,7 @@ function ProductForm({ product, categories, onClose, onAddCategory }: { product:
         <AssetUpload id="bp-animation" value={f.animationUrl} onChange={(ref) => set("animationUrl", ref)} onStateChange={setAnimUpload} />
         <p className="mt-1 text-xs text-muted">Leave empty if this item doesn't need one.</p>
       </div>
-      <div>
-        <label className="label" htmlFor="bp-gift-id">
-          Gift ID <span className="normal-case tracking-normal text-muted/70">(optional — only for a Gifts-category item)</span>
-        </label>
-        <input id="bp-gift-id" className="field" value={f.giftId} onChange={(e) => set("giftId", e.target.value.trim())} placeholder="e.g. the ID shown on the Gifts page" />
-        <p className="mt-1 text-xs text-muted">Set this to a real gift's ID and buying this item lands in the Package tab of "Send a gift" (free to send), instead of the Bag.</p>
-      </div>
+      
       {product ? <Toggle checked={f.active} onChange={(v) => set("active", v)} label="On sale in the Shop" hint="Turn off to stop selling it." /> : null}
       {product ? <p className="text-xs text-muted">{[`ID ${product.id}`, updatedText(product.updatedAt)].filter(Boolean).join(" · ")}</p> : null}
       {error ? <ErrorNote>{error}</ErrorNote> : null}
