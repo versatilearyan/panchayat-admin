@@ -277,7 +277,7 @@ const SIZE_PRESETS: { label: string; ratio: string }[] = [
   { label: "Crystal Palace", ratio: "510 / 798" },
 ];
 
-function AnimationSize({ gift, onChange }: { gift: ServerGift; onChange: (g: ServerGift) => void }) {
+export function AnimationSize({ gift, onChange }: { gift: ServerGift; onChange: (g: ServerGift) => void }) {
   const { toast, changed } = useAdmin();
   const [ratio, setRatio] = useState(gift.animationRatio ?? "");
   const [busy, setBusy] = useState(false);

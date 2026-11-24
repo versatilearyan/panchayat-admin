@@ -11,6 +11,7 @@ import { Badge, Button, Card, Chips, Empty, ErrorNote, fmtCoins, Loading, Modal,
 import { shopCategoryService, type CategoryInput, type ShopCategory } from "../services/shopCategoryService";
 import { shopProductService, type ProductInput, type ShopProduct } from "../services/shopProductService";
 import { giftCatalogService } from "../services/giftCatalogService";
+import { AnimationSize } from "./GiftsLive";
 
 type View = "products" | "categories";
 
@@ -218,6 +219,12 @@ function ProductForm({ product, categories, onClose, onAddCategory }: { product:
   const [error, setError] = useState<string | null>(null);
   const [upload, setUpload] = useState<AssetUploadState>("idle");
   const gifts = useLoad(() => giftCatalogService.list(), []);
+  // Sizes saved from here, so the box shows the new one right away
+  const [sizeSaved, setSizeSaved] = useState<Record<string, string | null>>({});
+  const pickedGift = (() => {
+    const g = (gifts.data ?? []).find((x) => x.id === f.giftId);
+    return g ? { ...g, animationRatio: f.giftId in sizeSaved ? sizeSaved[f.giftId] : g.animationRatio } : null;
+  })();
   const [animUpload, setAnimUpload] = useState<AssetUploadState>("idle");
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((x) => ({ ...x, [k]: v }));
 
@@ -376,6 +383,13 @@ function ProductForm({ product, categories, onClose, onAddCategory }: { product:
                 ))}
               </select>
               <p className="mt-1 text-xs text-muted">After buying, this gift lands in the Package tab of "Send a gift" (free to send), the same place chest gifts go. Buying 2 gives 2.</p>
+              {pickedGift ? (
+                <div className="mt-3">
+                  {/* The gift's own animation size: it plays at this size when sent from the Package. Saving here changes it for that gift everywhere. */}
+                  <AnimationSize key={pickedGift.id} gift={pickedGift} onChange={(g) => setSizeSaved((s) => ({ ...s, [g.id]: g.animationRatio ?? null }))} />
+                  <p className="mt-1 text-xs text-muted">Comes with the gift automatically. Changing it here changes it for &quot;{pickedGift.name}&quot; everywhere (also on the Gifts page).</p>
+                </div>
+              ) : null}
             </>
           ) : (
             <p className="mt-1 text-xs text-muted">Wearable items go to the Bag, where the buyer can wear and take them off.</p>
