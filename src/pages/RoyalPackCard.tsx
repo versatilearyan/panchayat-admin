@@ -10,9 +10,11 @@ import { useAdmin } from "../context";
 import { apiRequest } from "../lib/api";
 import { Badge, Button, Card, ErrorNote, Loading, Toggle, fmtCoins } from "../components/ui";
 import { frameSrc } from "./NameFrames";
+import { MediaPreview, formatOf } from "../components/MediaParts";
+import { UserPicker } from "./RoomsLive";
 
 type RoyalFrame = { id: string; name: string; imageUrl: string; scale: number; y: number; size: number; plateX: number; plateY: number; plateW: number; plateH: number; color: string; stroke: string };
-type RoyalTitle = { id: string; name: string; colorFrom: string; colorTo: string; textColor: string };
+type RoyalTitle = { id: string; name: string; iconUrl?: string | null; colorFrom: string; colorTo: string; textColor: string };
 type Royal = {
   enabled: boolean;
   name: string;
@@ -57,6 +59,14 @@ const toFit = (f: RoyalFrame): Fit => ({ frameScale: f.scale, displaySize: f.siz
 
 function Pill({ t }: { t: RoyalTitle | null }) {
   if (!t) return <span className="text-xs text-muted">none</span>;
+  // A title with uploaded artwork (WEBP, SVGA or MP4) shows that artwork, the same as in the app
+  if (t.iconUrl) {
+    return (
+      <span className="inline-flex align-middle" title={t.name}>
+        <MediaPreview media={{ url: t.iconUrl, format: formatOf(t.iconUrl) }} size={44} />
+      </span>
+    );
+  }
   return (
     <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ring-1 ring-white/25" style={{ background: `linear-gradient(90deg, ${t.colorFrom}, ${t.colorTo})`, color: t.textColor }}>
       ★ {t.name}
@@ -258,8 +268,88 @@ export function RoyalPackCard() {
           <Button variant="primary" busy={busy} onClick={() => void save()}>
             Save Royal Pack
           </Button>
+          <GiveRoyal coins={saved.coins} ready={Boolean(saved.frame)} />
+          {error ? <ErrorNote>{error}</ErrorNote> : null}
         </div>
       </div>
     </Card>
+  );
+}
+
+type Picked = { id: number; publicId: number; name: string; email: string };
+
+/** Give the Royal Pack to one person with no payment: the frame with a name you write, the titles, and (if ticked) the coins. */
+function GiveRoyal({ coins, ready }: { coins: number; ready: boolean }) {
+  const { toast } = useAdmin();
+  const [who, setWho] = useState<Picked | null>(null);
+  const [plate, setPlate] = useState("");
+  const [title, setTitle] = useState<"AUTO" | "KING" | "QUEEN">("AUTO");
+  const [withCoins, setWithCoins] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const len = Array.from(plate.trim()).length;
+  const ok = ready && who !== null && len >= 1 && len <= 14;
+
+  const give = async () => {
+    if (!who || !ok) return;
+    const what = `the Royal Pack (frame "${plate.trim()}", titles${withCoins ? `, ${fmtCoins(coins)} coins` : ""})`;
+    if (!window.confirm(`Give ${what} to ${who.name} (ID ${who.publicId})? Munshi ji will message them.`)) return;
+    setBusy(true);
+    try {
+      const r = await apiRequest<{ name: string; title: string; coins: number }>(`${base}/grant`, {
+        method: "POST",
+        body: { user: String(who.id), plateName: plate.trim(), title, includeCoins: withCoins },
+      });
+      toast(`${r.name} got the Royal Pack (${r.title === "QUEEN" ? "Panchayat Queen" : "Panchayat King"}${r.coins > 0 ? `, ${fmtCoins(r.coins)} coins` : ""})`);
+      setWho(null);
+      setPlate("");
+      setTitle("AUTO");
+    } catch (e) {
+      toast(msg(e, "Couldn't give it"), "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-6 rounded-2xl p-4 ring-1 ring-gold/40">
+      <p className="mb-1 flex items-center gap-2 text-sm font-bold">
+        <Crown className="h-4 w-4 text-gold" aria-hidden /> Give the Royal Pack to a user
+      </p>
+      <p className="mb-3 text-xs text-muted">No payment needed. They get everything a buyer gets, and a message from Munshi ji. Not counted as sold.</p>
+      {!ready ? <p className="mb-2 text-xs text-[#ff9095]">Choose the pack's frame above and save first.</p> : null}
+      {who ? (
+        <p className="mb-3 flex items-center gap-2 text-sm">
+          <span className="font-semibold">{who.name}</span> <span className="text-muted">· ID {who.publicId}</span>
+          <button type="button" className="text-xs text-gold underline" onClick={() => setWho(null)}>
+            change
+          </button>
+        </p>
+      ) : (
+        <div className="mb-3">
+          <UserPicker placeholder="Search the user by name, email or ID" onPick={(u) => setWho(u)} />
+        </div>
+      )}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <label className="block text-sm font-semibold">
+          Name on the frame ({len}/14)
+          <input className="field mt-1" value={plate} onChange={(e) => setPlate(Array.from(e.target.value).slice(0, 14).join(""))} placeholder="Up to 14 letters" />
+        </label>
+        <label className="block text-sm font-semibold">
+          King or Queen
+          <select className="field mt-1" value={title} onChange={(e) => setTitle(e.target.value as "AUTO" | "KING" | "QUEEN")}>
+            <option value="AUTO">By their gender</option>
+            <option value="KING">Panchayat King</option>
+            <option value="QUEEN">Panchayat Queen</option>
+          </select>
+        </label>
+        <label className="flex items-end gap-2 pb-2 text-sm font-semibold">
+          <input type="checkbox" className="h-4 w-4" checked={withCoins} onChange={(e) => setWithCoins(e.target.checked)} />
+          Also add {fmtCoins(coins)} coins
+        </label>
+      </div>
+      <Button variant="gold" className="mt-3" busy={busy} disabled={!ok} onClick={() => void give()}>
+        <Crown className="h-4 w-4" /> Give Royal Pack
+      </Button>
+    </div>
   );
 }
