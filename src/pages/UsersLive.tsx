@@ -4,12 +4,12 @@
  * and Super Admins.
  */
 import { useEffect, useState } from "react";
-import { Ban, Gift, MinusCircle, RefreshCw, ShieldCheck } from "lucide-react";
+import { Ban, Gift, MinusCircle, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
 import { useAdmin } from "../context";
 import { Avatar, Badge, Button, Card, Chips, Empty, fmtCoins, Loading, PageHeader } from "../components/ui";
 import { Pager } from "../components/WalletParts";
 import { GiveAllButton } from "../components/GiveAll";
-import { BanDialog, RedPacketGiftDialog, RemoveDialog } from "../components/UserModeration";
+import { BanDialog, DeleteAccountDialog, RedPacketGiftDialog, RemoveDialog } from "../components/UserModeration";
 import { mediaHref } from "../components/MediaParts";
 import { adminUsersService, type AppUser, type UserFilter, type UserStats } from "../services/adminUsersService";
 import type { Paged } from "../services/rewardService";
@@ -42,6 +42,7 @@ export function UsersLivePage() {
   const [banUser, setBanUser] = useState<AppUser | null>(null);
   const [packetUser, setPacketUser] = useState<AppUser | null>(null);
   const [removeUser, setRemoveUser] = useState<AppUser | null>(null);
+  const [deleteUser, setDeleteUser] = useState<AppUser | null>(null);
   const [tick, setTick] = useState(0);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [data, setData] = useState<Paged<AppUser> | null>(null);
@@ -214,6 +215,9 @@ export function UsersLivePage() {
                         <Button size="sm" variant="danger" onClick={() => setRemoveUser(u)} aria-label={`Remove coins or Charm from ${u.name ?? "user"}`}>
                           <MinusCircle className="h-3.5 w-3.5" /> Coins/Charm
                         </Button>
+                        <Button size="sm" variant="danger" onClick={() => setDeleteUser(u)} aria-label={`Delete ${u.name ?? "user"}'s account`}>
+                          <Trash2 className="h-3.5 w-3.5" /> Delete
+                        </Button>
                         <Button size="sm" onClick={() => setPacketUser(u)} aria-label={`Give ${u.name ?? "user"} a red packet`}>
                           <Gift className="h-3.5 w-3.5" /> Red packet
                         </Button>
@@ -248,6 +252,7 @@ export function UsersLivePage() {
       <BanDialog user={banUser} onClose={() => setBanUser(null)} />
       <RedPacketGiftDialog user={packetUser} onClose={() => setPacketUser(null)} />
       <RemoveDialog user={removeUser} onClose={() => setRemoveUser(null)} />
+      <DeleteAccountDialog user={deleteUser} onClose={() => setDeleteUser(null)} />
     </>
   );
 }

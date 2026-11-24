@@ -59,6 +59,7 @@ export const adminUsersService = {
   /** amount empty = all of it. Super Admin only. */
   removeCoins: async (id: number, amount: number | null, reason: string) => unwrap<{ removed: number; balance: number }>(await apiRequest(`${base}/${id}/remove-coins`, { method: "POST", body: { amount, reason } })),
   removeCharm: async (id: number, amount: number | null, reason: string) => unwrap<{ removed: number; charm: number }>(await apiRequest(`${base}/${id}/remove-charm`, { method: "POST", body: { amount, reason } })),
+  deleteAccount: async (id: number, reason: string) => unwrap<{ deleted: boolean }>(await apiRequest(`${base}/${id}/delete-account`, { method: "POST", body: { confirm: "DELETE", reason } })),
   unban: async (id: number) => apiRequest(`${base}/${id}/unban`, { method: "POST" }),
   giveAllCoins: async (coins: number, reason: string) => unwrap<{ id: number; recipients: number }>(await apiRequest(`${all}/coins`, { method: "POST", body: { coins, reason } })),
   giveAllRedPacket: async (productId: number | string, quantity: number, reason: string) =>

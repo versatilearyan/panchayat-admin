@@ -256,3 +256,65 @@ function RemoveForm({ user, onClose }: { user: AppUser; onClose: () => void }) {
     </div>
   );
 }
+
+/** Delete someone's account for good (Super Admin): the same as them deleting it in the app. */
+export function DeleteAccountDialog({ user, onClose }: { user: AppUser | null; onClose: () => void }) {
+  return (
+    <Modal open={user !== null} onClose={onClose} title="Delete account">
+      {user ? <DeleteForm key={user.id} user={user} onClose={onClose} /> : null}
+    </Modal>
+  );
+}
+
+function DeleteForm({ user, onClose }: { user: AppUser; onClose: () => void }) {
+  const { toast, changed } = useAdmin();
+  const [typed, setTyped] = useState("");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await adminUsersService.deleteAccount(user.id, reason.trim());
+      toast(`${who(user)}'s account is deleted`);
+      changed();
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong");
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      <p className="rounded-2xl bg-ink px-3.5 py-3 text-sm ring-1 ring-line">
+        <span className="font-semibold">{who(user)}</span> <span className="text-muted">· ID {user.publicId}</span>
+        <span className="mt-1 block text-xs text-[#ff9095]">
+          Their name, email and picture are removed, they are signed out everywhere, and this ID can never be used again. Coins and everything in their Bag are lost.
+          Gifts and messages stay in other people's history as "Deleted user". This can't be undone.
+        </span>
+      </p>
+      <div>
+        <label className="label" htmlFor="del-why">
+          Reason (saved in the log)
+        </label>
+        <input id="del-why" className="field h-10 w-full" maxLength={200} value={reason} onChange={(e) => setReason(e.target.value)} />
+      </div>
+      <div>
+        <label className="label" htmlFor="del-type">
+          Type DELETE to confirm
+        </label>
+        <input id="del-type" className="field h-10 w-40" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" />
+      </div>
+      {error ? <ErrorNote>{error}</ErrorNote> : null}
+      <div className="flex justify-end gap-2">
+        <Button onClick={onClose}>Cancel</Button>
+        <Button variant="danger" busy={busy} disabled={typed !== "DELETE"} onClick={submit}>
+          Delete account
+        </Button>
+      </div>
+    </div>
+  );
+}
