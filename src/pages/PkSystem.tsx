@@ -109,6 +109,29 @@ export function PkSystemPage() {
         </div>
       ) : null}
 
+      <Card title="Start everyone from zero" className="mb-4">
+        <div className="flex flex-wrap items-center gap-3 p-4">
+          <p className="min-w-0 flex-1 basis-72 text-sm text-muted">
+            Sets every person&apos;s PK Coins to 0 and starts the PK ranking (week, month and overall) again from now. Each change is written in the log below with your name. This can&apos;t be undone.
+          </p>
+          <Button
+            variant="danger"
+            busy={busy === "reset"}
+            onClick={async () => {
+              const typed = window.prompt(`This sets ${summary ? fmt(summary.inCirculation) + " PK Coins of " + fmt(summary.holders) + " people" : "everyone's PK Coins"} to 0 and restarts the PK ranking. It can't be undone.\n\nType RESET to continue.`);
+              if (typed !== "RESET") return;
+              if (await run("reset", () => apiRequest("/api/v1/admin/pk/reset-all", { method: "POST", body: { confirm: "RESET" } }), "Everyone's PK Coins are now 0")) {
+                loadSettings();
+                loadHolders();
+                loadTxs();
+              }
+            }}
+          >
+            Reset all PK Coins to 0
+          </Button>
+        </div>
+      </Card>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="How PK Coins are earned">
           {!settings ? (
