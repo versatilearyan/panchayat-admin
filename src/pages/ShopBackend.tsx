@@ -51,6 +51,8 @@ function Thumb({ url, name, size = 48 }: { url?: string | null; name: string; si
 
 type Editing = { kind: "product"; item: ShopProduct | null } | { kind: "category"; item: ShopCategory | null } | null;
 
+const TYPE_LABEL: Record<string, string> = { FRAME: "Frame", BUBBLE: "Chat bubble", ENTRY: "Entry", PROFILE: "Profile effect", BADGE: "Badge", RING: "Ring" };
+
 export function ShopBackendPage() {
   const { version } = useAdmin();
   const [view, setView] = useState<View>("products");
@@ -140,6 +142,7 @@ function Products({ categories, onEdit, onAddCategory }: { categories: ShopCateg
                       {p.rarity ? <Badge tone={RARITY_TONE[p.rarity.toUpperCase()] ?? "muted"}>{pretty(p.rarity)}</Badge> : null}
                       {isSvga(p.assetUrl) ? <Badge tone="coral">SVGA</Badge> : null}
                       {p.validDays ? <Badge tone="muted">{p.validDays} days</Badge> : null}
+                {p.giftId ? <Badge tone="info">Gift</Badge> : p.wearSlot && p.wearSlot !== "NONE" ? <Badge tone="info">{TYPE_LABEL[p.wearSlot] ?? p.wearSlot}</Badge> : null}
                       {!p.active ? <Badge>Off sale</Badge> : null}
                     </span>
                     <span className="mt-0.5 flex flex-wrap items-center gap-x-3 text-sm">
@@ -367,12 +370,13 @@ function ProductForm({ product, categories, onClose, onAddCategory }: { product:
             Worn as
           </label>
           <select id="bp-wear" className="field" value={f.wearSlot} onChange={(e) => set("wearSlot", e.target.value)}>
-            <option value="">Automatic (from the category name)</option>
+            <option value="">Automatic (from the category name: frame, bubble, entry, ring …)</option>
             <option value="FRAME">Avatar frame</option>
             <option value="BUBBLE">Chat bubble</option>
             <option value="ENTRY">Entry effect</option>
             <option value="PROFILE">Profile effect</option>
             <option value="BADGE">Badge</option>
+            <option value="RING">Ring (goes to the Bag, used to propose in CP)</option>
             <option value="NONE">Not wearable (just kept in the Bag)</option>
             <option value="GIFT">Gift (goes to the Package, like chest gifts)</option>
           </select>

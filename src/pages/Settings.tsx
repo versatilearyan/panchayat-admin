@@ -237,15 +237,26 @@ function SilentObserverCard() {
   const { can, toast } = useAdmin();
   const [userId, setUserId] = useState("");
   const [busy, setBusy] = useState(false);
-  if (!can("settings.edit")) return null;
+  const [list, setList] = useState<{ userId: number; name: string | null }[] | null>(null);
+  const allowed = can("settings.edit");
+  const load = useCallback(() => {
+    apiRequest<{ userId: number; name: string | null }[]>("/api/v1/admin/users/silent-observers")
+      .then(setList)
+      .catch(() => setList([]));
+  }, []);
+  useEffect(() => {
+    if (allowed) load();
+  }, [allowed, load]);
+  if (!allowed) return null;
 
-  const setFlag = async (enabled: boolean) => {
-    const id = userId.trim();
+  const setFlag = async (enabled: boolean, given?: string) => {
+    const id = (given ?? userId).trim();
     if (!id) return toast("Type the account's user ID", "error");
     setBusy(true);
     try {
       await apiRequest(`/api/v1/admin/users/${encodeURIComponent(id)}/silent-observer`, { method: "POST", body: { enabled } });
       toast(enabled ? `Account ${id} can now join any password room invisibly, without the password` : `Account ${id}'s silent-observer access is off`);
+      load();
     } catch (e) {
       toast(e instanceof Error ? e.message : "Couldn't save", "error");
     } finally {
@@ -274,6 +285,28 @@ function SilentObserverCard() {
           <Button variant="ghost" busy={busy} disabled={!userId.trim()} onClick={() => void setFlag(false)}>
             Turn off
           </Button>
+        </div>
+        {/* Every internal ID that is on right now, each with its own off switch */}
+        <div>
+          <p className="label">Internal IDs on now{list ? ` (${list.length})` : ""}</p>
+          {!list ? (
+            <p className="text-sm text-muted">Loading…</p>
+          ) : !list.length ? (
+            <p className="text-sm text-muted">None. No account is a silent observer.</p>
+          ) : (
+            <ul className="divide-y divide-line rounded-xl ring-1 ring-line">
+              {list.map((o) => (
+                <li key={o.userId} className="flex items-center justify-between gap-3 px-3 py-2">
+                  <span className="min-w-0 truncate text-sm">
+                    <span className="font-semibold">{o.name || "No name"}</span> <span className="text-muted">· ID {o.userId}</span>
+                  </span>
+                  <Button size="sm" variant="ghost" busy={busy} onClick={() => void setFlag(false, String(o.userId))}>
+                    Turn off
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </Card>
