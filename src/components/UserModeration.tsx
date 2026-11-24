@@ -1,5 +1,5 @@
 /** Ban or suspend an account, and put red packets in one person's Bag (the live backend). */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Ban } from "lucide-react";
 import { useAdmin } from "../context";
 import { adminUsersService, type AppUser } from "../services/adminUsersService";
@@ -253,6 +253,176 @@ function RemoveForm({ user, onClose }: { user: AppUser; onClose: () => void }) {
           </Button>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Delete someone's account for good (Super Admin): the same as them deleting it in the app. */
+export function DeleteAccountDialog({ user, onClose }: { user: AppUser | null; onClose: () => void }) {
+  return (
+    <Modal open={user !== null} onClose={onClose} title="Delete account">
+      {user ? <DeleteForm key={user.id} user={user} onClose={onClose} /> : null}
+    </Modal>
+  );
+}
+
+function DeleteForm({ user, onClose }: { user: AppUser; onClose: () => void }) {
+  const { toast, changed } = useAdmin();
+  const [typed, setTyped] = useState("");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await adminUsersService.deleteAccount(user.id, reason.trim());
+      toast(`${who(user)}'s account is deleted`);
+      changed();
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong");
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      <p className="rounded-2xl bg-ink px-3.5 py-3 text-sm ring-1 ring-line">
+        <span className="font-semibold">{who(user)}</span> <span className="text-muted">· ID {user.publicId}</span>
+        <span className="mt-1 block text-xs text-[#ff9095]">
+          Their name, email and picture are removed, they are signed out everywhere, and this ID can never be used again. Coins and everything in their Bag are lost.
+          Gifts and messages stay in other people's history as "Deleted user". This can't be undone.
+        </span>
+      </p>
+      <div>
+        <label className="label" htmlFor="del-why">
+          Reason (saved in the log)
+        </label>
+        <input id="del-why" className="field h-10 w-full" maxLength={200} value={reason} onChange={(e) => setReason(e.target.value)} />
+      </div>
+      <div>
+        <label className="label" htmlFor="del-type">
+          Type DELETE to confirm
+        </label>
+        <input id="del-type" className="field h-10 w-40" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" />
+      </div>
+      {error ? <ErrorNote>{error}</ErrorNote> : null}
+      <div className="flex justify-end gap-2">
+        <Button onClick={onClose}>Cancel</Button>
+        <Button variant="danger" busy={busy} disabled={typed !== "DELETE"} onClick={submit}>
+          Delete account
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+type Restriction = { kind: "CHAT_BAN" | "MOMENT_BAN"; reason: string | null; createdBy: string | null; expiresAt: string | null; active: boolean };
+const KIND_LABEL: Record<Restriction["kind"], { title: string; text: string }> = {
+  CHAT_BAN: { title: "Chat ban", text: "Can't send messages in rooms or in private chat." },
+  MOMENT_BAN: { title: "Moments ban", text: "Can't post Moments." },
+};
+
+/** Chat ban / Moments ban (short of a full ban): put on for some days or until lifted, or lift it. Daroga ji tells the person. */
+export function RestrictDialog({ user, onClose }: { user: AppUser | null; onClose: () => void }) {
+  return (
+    <Modal open={user !== null} onClose={onClose} title="Chat and Moments bans">
+      {user ? <RestrictForm key={user.id} user={user} /> : null}
+    </Modal>
+  );
+}
+
+function RestrictForm({ user }: { user: AppUser }) {
+  const { toast } = useAdmin();
+  const [list, setList] = useState<Restriction[] | null>(null);
+  const [days, setDays] = useState<Record<string, number>>({ CHAT_BAN: 1, MOMENT_BAN: 7 });
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const load = () =>
+    adminUsersService
+      .restrictions(user.id)
+      .then(setList)
+      .catch((e) => setError(e instanceof Error ? e.message : "Couldn't load"));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => void load(), [user.id]);
+
+  const set = async (kind: Restriction["kind"], on: boolean) => {
+    setBusy(kind);
+    setError(null);
+    try {
+      setList(await adminUsersService.setRestriction(user.id, kind, on, reason.trim(), on && days[kind] > 0 ? days[kind] : null));
+      toast(on ? `${KIND_LABEL[kind].title} on for ${who(user)}` : `${KIND_LABEL[kind].title} lifted for ${who(user)}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="rounded-2xl bg-ink px-3.5 py-3 text-sm ring-1 ring-line">
+        <span className="font-semibold">{who(user)}</span> <span className="text-muted">· ID {user.publicId}</span>
+        <span className="mt-1 block text-xs text-muted">They can still use the app. Daroga ji tells them what was restricted and why.</span>
+      </p>
+      <div>
+        <label className="label" htmlFor="rs-why">
+          Reason (the person sees it)
+        </label>
+        <input id="rs-why" className="field h-10 w-full" maxLength={200} placeholder="e.g. Abusive messages" value={reason} onChange={(e) => setReason(e.target.value)} />
+      </div>
+      {!list ? (
+        <p className="text-sm text-muted">Loading…</p>
+      ) : (
+        (["CHAT_BAN", "MOMENT_BAN"] as const).map((kind) => {
+          const cur = list.find((r) => r.kind === kind && r.active);
+          return (
+            <div key={kind} className="rounded-2xl p-3.5 ring-1 ring-line">
+              <div className="flex items-start justify-between gap-3">
+                <span>
+                  <span className="block font-semibold">{KIND_LABEL[kind].title}</span>
+                  <span className="block text-xs text-muted">{KIND_LABEL[kind].text}</span>
+                  {cur ? (
+                    <span className="mt-1 block text-xs text-[#ff9095]">
+                      On {cur.expiresAt ? `until ${new Date(cur.expiresAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}` : "until lifted"}
+                      {cur.reason ? ` · ${cur.reason}` : ""}
+                      {cur.createdBy ? ` · by ${cur.createdBy}` : ""}
+                    </span>
+                  ) : (
+                    <span className="mt-1 block text-xs text-muted">Off</span>
+                  )}
+                </span>
+                {cur ? (
+                  <Button size="sm" variant="ok" busy={busy === kind} onClick={() => void set(kind, false)}>
+                    Lift
+                  </Button>
+                ) : null}
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Chips
+                  label="For how long"
+                  value={days[kind]}
+                  onChange={(v) => setDays((d) => ({ ...d, [kind]: v }))}
+                  options={[
+                    { value: 1, label: "1 day" },
+                    { value: 3, label: "3 days" },
+                    { value: 7, label: "7 days" },
+                    { value: 30, label: "30 days" },
+                    { value: 0, label: "Until lifted" },
+                  ]}
+                />
+                <Button size="sm" variant="danger" busy={busy === kind} onClick={() => void set(kind, true)}>
+                  {cur ? "Change" : "Put on"}
+                </Button>
+              </div>
+            </div>
+          );
+        })
+      )}
+      {error ? <ErrorNote>{error}</ErrorNote> : null}
     </div>
   );
 }

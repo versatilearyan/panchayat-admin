@@ -609,8 +609,10 @@ function SettingsTab() {
           <Toggle checked={cfg.autoCreate} onChange={(v) => set("autoCreate", v)} label="Create rooms automatically" hint="When a new member signs up and no welcome room has a free spot, open one with a free host from your Hosts list." />
           {num("Maximum welcome rooms open at once", "maxRooms", "rooms", "New rooms are refused after this.")}
           {num("Room capacity", "roomCapacity", "people", "16 to 50. At least 16 so the extra seats fit.")}
-          {num("Room lifetime", "roomLifetimeHours", "hours", "A welcome room closes by itself after this time. 0 = it stays open until you close it.")}
-          {num("Host grace time", "hostGraceMinutes", "min", "If the host stays away this long, the room goes to a free host (or closes if it is empty).")}
+          {/* Welcome rooms no longer end or change host by themselves, so there is no lifetime or grace time to set */}
+          <p className="text-xs text-muted sm:col-span-2">
+            Once a welcome room is active it stays open with its host, even when the host is away. It closes or changes host only when you do it here. A room you disable or delete stays off, and its host isn&apos;t given a new room automatically (add them as a host again to allow it).
+          </p>
           {num("Priority", "priority", "", "Lower numbers show first when rooms are otherwise equal (0 to 1000).")}
           <div>
             <label className="label" htmlFor="nb-desc">
