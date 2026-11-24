@@ -2,8 +2,9 @@
  * Shop items when the panel is connected to the Spring Boot backend:
  * categories and products from /api/v1/admin/shop/*. The demo Shop (Shop.tsx) is used otherwise.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Coins, FolderOpen, FolderPlus, ImageOff, Plus } from "lucide-react";
+import { apiRequest } from "../lib/api";
 import { useAdmin } from "../context";
 import { AssetMedia, AssetUpload, useAsset, type AssetUploadState } from "../components/AssetUpload";
 import { isMp4Ref, isSvgaRef } from "../services/shopAssetService";
@@ -218,7 +219,10 @@ function ProductForm({ product, categories, onClose, onAddCategory }: { product:
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [upload, setUpload] = useState<AssetUploadState>("idle");
-  const gifts = useLoad(() => giftCatalogService.list(), []);
+  const [giftsVersion, setGiftsVersion] = useState(0);
+  const gifts = useLoad(() => giftCatalogService.list(), [giftsVersion]);
+  // A category sold for PK Coins: prices are PK Coins
+  const pkCategory = categories.find((c) => String(c.id) === f.categoryId)?.currency === "PK_COINS";
   // Sizes saved from here, so the box shows the new one right away
   const [sizeSaved, setSizeSaved] = useState<Record<string, string | null>>({});
   const pickedGift = (() => {
@@ -329,7 +333,7 @@ function ProductForm({ product, categories, onClose, onAddCategory }: { product:
       <div className="grid gap-4 sm:grid-cols-3">
         <div>
           <label className="label" htmlFor="bp-price">
-            Price (coins)
+            {pkCategory ? "Price (PK Coins)" : "Price (coins)"}
           </label>
           <input id="bp-price" className="field" type="number" inputMode="decimal" min={0} step="any" required value={f.price} onChange={(e) => set("price", e.target.value)} />
         </div>
@@ -382,12 +386,14 @@ function ProductForm({ product, categories, onClose, onAddCategory }: { product:
                   </option>
                 ))}
               </select>
+              <NewShopGift onCreated={(id) => { setGiftsVersion((v) => v + 1); set("giftId", id); }} />
               <p className="mt-1 text-xs text-muted">After buying, this gift lands in the Package tab of "Send a gift" (free to send), the same place chest gifts go. Buying 2 gives 2.</p>
               {pickedGift ? (
                 <div className="mt-3">
                   {/* The gift's own animation size: it plays at this size when sent from the Package. Saving here changes it for that gift everywhere. */}
                   <AnimationSize key={pickedGift.id} gift={pickedGift} onChange={(g) => setSizeSaved((s) => ({ ...s, [g.id]: g.animationRatio ?? null }))} />
                   <p className="mt-1 text-xs text-muted">Comes with the gift automatically. Changing it here changes it for &quot;{pickedGift.name}&quot; everywhere (also on the Gifts page).</p>
+                  <PackageGiftTriggers key={`t-${pickedGift.id}`} giftId={pickedGift.id} />
                 </div>
               ) : null}
             </>
@@ -584,6 +590,138 @@ function CategoryForm({ category, onClose }: { category: ShopCategory | null; on
         </Button>
       </div>
       {problem && (f.name || category) ? <p className="-mt-2 text-right text-xs text-muted">{problem}</p> : null}
+    </div>
+  );
+}
+
+/**
+ * Make a gift right here that exists only for the Shop: never in the gift panel; people buy this Shop item, the
+ * gift lands in their Package, and they send it from there in rooms.
+ */
+function NewShopGift({ onCreated }: { onCreated: (giftId: string) => void }) {
+  const { toast } = useAdmin();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [value, setValue] = useState("");
+  const [image, setImage] = useState<File | null>(null);
+  const [anim, setAnim] = useState<File | null>(null);
+  const [trig, setTrig] = useState<Triggers>({ charmMin: "", charmMax: "", coinMin: "", coinMax: "" });
+  const [busy, setBusy] = useState(false);
+  const ok = name.trim().length >= 2 && Number(value) >= 1 && image !== null;
+  const create = async () => {
+    if (!ok || !image) return;
+    setBusy(true);
+    try {
+      const g = await giftCatalogService.create({ name: name.trim(), price: Math.round(Number(value)), category: "Popular", active: true, shopOnly: true });
+      if (!g) throw new Error("The gift wasn't created.");
+      await giftCatalogService.upload(g.id, "image", image).promise;
+      if (anim) await giftCatalogService.upload(g.id, "animation", anim).promise;
+      if (Object.values(trig).some((v) => v.trim() !== "")) await apiRequest(`/api/v1/admin/manage/gifts/${encodeURIComponent(g.id)}/triggers`, { method: "PUT", body: triggersBody(trig) });
+      toast(`${g.name} made (Shop only)`);
+      onCreated(g.id);
+      setOpen(false);
+      setName("");
+      setValue("");
+      setImage(null);
+      setAnim(null);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Couldn't make the gift", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (!open) {
+    return (
+      <button type="button" className="mt-2 text-xs font-semibold text-gold" onClick={() => setOpen(true)}>
+        + Create a new Shop-only gift
+      </button>
+    );
+  }
+  return (
+    <div className="mt-2 space-y-2 rounded-xl p-3 ring-1 ring-gold/40">
+      <p className="text-xs font-bold">New Shop-only gift (never in the gift panel)</p>
+      <input className="field" maxLength={40} value={name} onChange={(e) => setName(e.target.value)} placeholder="Gift name" aria-label="Gift name" />
+      <input className="field" inputMode="numeric" value={value} onChange={(e) => setValue(e.target.value.replace(/\D/g, ""))} placeholder="Gift value in coins (for Charm and rankings)" aria-label="Gift value" />
+      <label className="block text-xs font-semibold">
+        Picture (PNG / JPG) *
+        <input type="file" accept="image/png,image/jpeg" className="mt-1 block text-xs" onChange={(e) => setImage(e.target.files?.[0] ?? null)} />
+      </label>
+      <label className="block text-xs font-semibold">
+        Animation (SVGA or MP4, optional)
+        <input type="file" accept=".svga,video/mp4" className="mt-1 block text-xs" onChange={(e) => setAnim(e.target.files?.[0] ?? null)} />
+      </label>
+      <TriggerFields t={trig} onChange={setTrig} />
+      <div className="flex gap-2">
+        <Button size="sm" variant="gold" busy={busy} disabled={!ok} onClick={() => void create()}>
+          Create gift
+        </Button>
+        <Button size="sm" onClick={() => setOpen(false)}>
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+type Triggers = { charmMin: string; charmMax: string; coinMin: string; coinMax: string };
+const numOrNull = (s: string) => (s.trim() === "" ? null : Number(s));
+const triggersBody = (t: Triggers) => ({ charmMin: numOrNull(t.charmMin), charmMax: numOrNull(t.charmMax), coinMin: numOrNull(t.coinMin), coinMax: numOrNull(t.coinMax) });
+
+/** The four boxes: coins the receiver gets and Charm, each a min and a max (a random number in between). */
+function TriggerFields({ t, onChange }: { t: Triggers; onChange: (t: Triggers) => void }) {
+  const box = (k: keyof Triggers, ph: string) => (
+    <input className="field h-9" inputMode="numeric" value={t[k]} onChange={(e) => onChange({ ...t, [k]: e.target.value.replace(/\D/g, "") })} placeholder={ph} aria-label={ph} />
+  );
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <span className="col-span-2 text-xs font-semibold">Coins the receiver gets (min – max)</span>
+      {box("coinMin", "Min coins")}
+      {box("coinMax", "Max coins")}
+      <span className="col-span-2 text-xs font-semibold">Charm the receiver gets (min – max)</span>
+      {box("charmMin", "Min Charm")}
+      {box("charmMax", "Max Charm")}
+    </div>
+  );
+}
+
+/** For the chosen gift: what it gives when sent from the Package (empty = the usual share of its value and its usual Charm). */
+function PackageGiftTriggers({ giftId }: { giftId: string }) {
+  const { toast } = useAdmin();
+  const [t, setT] = useState<Triggers | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    let live = true;
+    apiRequest<Record<string, { charmMin: number | null; charmMax: number | null; coinMin: number | null; coinMax: number | null }>>("/api/v1/admin/manage/gifts/triggers")
+      .then((all) => {
+        const x = all[giftId];
+        const s = (v: number | null | undefined) => (v === null || v === undefined ? "" : String(v));
+        if (live) setT({ charmMin: s(x?.charmMin), charmMax: s(x?.charmMax), coinMin: s(x?.coinMin), coinMax: s(x?.coinMax) });
+      })
+      .catch(() => live && setT({ charmMin: "", charmMax: "", coinMin: "", coinMax: "" }));
+    return () => {
+      live = false;
+    };
+  }, [giftId]);
+  if (!t) return null;
+  const save = async () => {
+    setBusy(true);
+    try {
+      await apiRequest(`/api/v1/admin/manage/gifts/${encodeURIComponent(giftId)}/triggers`, { method: "PUT", body: triggersBody(t) });
+      toast("Saved: what this gift gives when sent");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Couldn't save", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="mt-3 space-y-2 rounded-xl p-3 ring-1 ring-line">
+      <p className="text-xs font-bold">When sent from the Package</p>
+      <TriggerFields t={t} onChange={setT} />
+      <p className="text-xs text-muted">Each gift sent gives a random amount between min and max. Leave a pair empty for the usual: coins = a share of its value, Charm = its usual Charm.</p>
+      <Button size="sm" variant="primary" busy={busy} onClick={() => void save()}>
+        Save
+      </Button>
     </div>
   );
 }

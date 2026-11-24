@@ -26,7 +26,7 @@ export type ServerGift = {
   updatedAt?: string;
 };
 
-export type GiftInput = { name?: string; price?: number; category?: string; sortOrder?: number; active?: boolean };
+export type GiftInput = { name?: string; price?: number; category?: string; sortOrder?: number; active?: boolean; shopOnly?: boolean };
 export type GiftFileKind = "image" | "animation" | "sound";
 
 export const GIFT_CATEGORIES = ["Popular", "Cute", "Romantic", "Celebration", "Royal", "Legendary"] as const;
