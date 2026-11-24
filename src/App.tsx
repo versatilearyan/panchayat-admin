@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ComponentType } from "react";
-import { Activity, BadgeCheck, BarChart3, Coins, CreditCard, Dice5, FileClock, ScrollText, Flag, Gift, Image, IndianRupee, Mail, Landmark, LayoutDashboard, Lock, LogOut, MessagesSquare, Settings, ShoppingBag, UserCog, Users, Wallet, Crown, Gem, UsersRound, Sparkles, Eye, ListChecks, Tag, PartyPopper, Share2, ShieldCheck, ShieldAlert, Gamepad2, CalendarDays, Swords, Gift as GiftIcon } from "lucide-react";
+import { Activity, BadgeCheck, Boxes, BarChart3, Coins, CreditCard, Dice5, FileClock, ScrollText, Flag, Gift, Image, IndianRupee, Mail, Landmark, LayoutDashboard, Lock, LogOut, MessagesSquare, Settings, ShoppingBag, UserCog, Users, Wallet, Crown, Gem, UsersRound, Sparkles, Eye, ListChecks, Tag, PartyPopper, Share2, ShieldCheck, ShieldAlert, Gamepad2, CalendarDays, Swords, Gift as GiftIcon } from "lucide-react";
 import { adminApi } from "./api";
 import { getSession, setSession, type AdminSession } from "./api/session";
 import { BACKEND_ENABLED } from "./config/api";
@@ -12,6 +12,7 @@ import { RoomsLivePage as RoomsPage } from "./pages/RoomsLive";
 import { NewbieRoomsPage } from "./pages/NewbieRooms";
 import { ProfileTitlesPage } from "./pages/ProfileTitles";
 import { NameFramesPage } from "./pages/NameFrames";
+import { InventoryPage } from "./pages/Inventory";
 import { FestivalsPage } from "./pages/Festivals";
 import { ReportsPage } from "./pages/Reports";
 import { MomentsPage } from "./pages/Moments";
@@ -126,6 +127,7 @@ const NAV: { page: Page; label: string; icon: typeof Users; child?: boolean }[] 
   { page: "parivar", label: "Parivar", icon: UsersRound },
   { page: "titles", label: "Profile titles", icon: Tag },
   { page: "nameFrames", label: "Name frames", icon: Tag },
+  { page: "inventory", label: "Inventory", icon: Boxes },
   { page: "festivals", label: "Festival Manager", icon: PartyPopper },
   { page: "newbie", label: "Newbie rooms", icon: Sparkles },
   { page: "activity", label: "Activity log", icon: Activity },
@@ -173,6 +175,7 @@ const PAGE_VIEW: Record<Page, ComponentType> = {
   parivar: ParivarPage,
   titles: ProfileTitlesPage,
   nameFrames: NameFramesPage,
+  inventory: InventoryPage,
   festivals: FestivalsPage,
   newbie: NewbieRoomsPage,
   activity: ActivityPage,

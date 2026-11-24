@@ -285,6 +285,7 @@ function GiveRoyal({ coins, ready }: { coins: number; ready: boolean }) {
   const [plate, setPlate] = useState("");
   const [title, setTitle] = useState<"AUTO" | "KING" | "QUEEN">("AUTO");
   const [withCoins, setWithCoins] = useState(true);
+  const [font, setFont] = useState("default");
   const [busy, setBusy] = useState(false);
   const len = Array.from(plate.trim()).length;
   const ok = ready && who !== null && len >= 1 && len <= 14;
@@ -297,7 +298,7 @@ function GiveRoyal({ coins, ready }: { coins: number; ready: boolean }) {
     try {
       const r = await apiRequest<{ name: string; title: string; coins: number }>(`${base}/grant`, {
         method: "POST",
-        body: { user: String(who.id), plateName: plate.trim(), title, includeCoins: withCoins },
+        body: { user: String(who.id), plateName: plate.trim(), title, includeCoins: withCoins, font },
       });
       toast(`${r.name} got the Royal Pack (${r.title === "QUEEN" ? "Panchayat Queen" : "Panchayat King"}${r.coins > 0 ? `, ${fmtCoins(r.coins)} coins` : ""})`);
       setWho(null);
@@ -340,6 +341,17 @@ function GiveRoyal({ coins, ready }: { coins: number; ready: boolean }) {
             <option value="AUTO">By their gender</option>
             <option value="KING">Panchayat King</option>
             <option value="QUEEN">Panchayat Queen</option>
+          </select>
+        </label>
+        <label className="block text-sm font-semibold">
+          Font for the name
+          <select className="field mt-1" value={font} onChange={(e) => setFont(e.target.value)}>
+            <option value="default">Classic</option>
+            <option value="pacifico">Pacifico</option>
+            <option value="dancing">Dancing Script</option>
+            <option value="cinzel">Royal Cinzel</option>
+            <option value="yatra">Yatra</option>
+            <option value="righteous">Righteous</option>
           </select>
         </label>
         <label className="flex items-end gap-2 pb-2 text-sm font-semibold">

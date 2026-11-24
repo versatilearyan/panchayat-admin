@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Minus, Plus, Play, Square, Swords, Trash2 } from "lucide-react";
 import { BACKEND_ENABLED } from "../config/api";
-import { apiRequest } from "../lib/api";
+import { apiRequest, apiUpload } from "../lib/api";
 import { useAdmin } from "../context";
 import { Badge, Button, Card, Chips, Empty, Loading, PageHeader, timeAgo } from "../components/ui";
 
@@ -32,6 +32,15 @@ export function PkSystemPage() {
   const [rooms, setRooms] = useState<Room[] | null>(null);
   const [adj, setAdj] = useState({ user: "", amount: "", reason: "" });
   const [newRoom, setNewRoom] = useState({ room: "", title: "", hostUser: "" });
+  const [create, setCreate] = useState({ name: "", title: "", hostUser: "" });
+  const uploadBackground = async (roomId: string, file?: File) => {
+    if (!file) return;
+    if (file.size > 100 * 1024 * 1024) return toast("The background can be at most 100 MB", "error");
+    const form = new FormData();
+    form.append("file", file);
+    await run(`bg${roomId}`, () => apiUpload(`/api/v1/admin/pk/rooms/${roomId}/background`, form).promise, "Background saved");
+    loadRooms();
+  };
   const [battle, setBattle] = useState({ mode: "1v1", rule: "gifts", minutes: "10" });
   const [busy, setBusy] = useState<string | null>(null);
   const [addHost, setAddHost] = useState<Record<string, string>>({});
@@ -236,6 +245,28 @@ export function PkSystemPage() {
             <Swords className="h-4 w-4" aria-hidden /> Make Official PK
           </Button>
         </div>
+        <div className="grid gap-3 border-b border-line bg-gold/5 p-4 sm:grid-cols-[1fr_1fr_160px_auto]">
+          <input className="field" maxLength={60} value={create.name} onChange={(e) => setCreate((c) => ({ ...c, name: e.target.value }))} placeholder="New room name, e.g. Panchayat PK Arena" aria-label="New room name" />
+          <input className="field" maxLength={80} value={create.title} onChange={(e) => setCreate((c) => ({ ...c, title: e.target.value }))} placeholder="Event title" aria-label="New room event title" />
+          <input className="field" inputMode="numeric" value={create.hostUser} onChange={(e) => setCreate((c) => ({ ...c, hostUser: e.target.value.replace(/\D/g, "") }))} placeholder="Host ID" aria-label="New room host ID" />
+          <Button
+            variant="gold"
+            busy={busy === "create"}
+            disabled={!create.name.trim() && !create.title.trim()}
+            onClick={async () => {
+              let code: number | null = null;
+              const ok = await run("create", async () => { const r = await apiRequest<{ roomCode: number }>("/api/v1/admin/pk/rooms/create", { method: "POST", body: create }); code = r.roomCode; }, "New Official PK room made");
+              if (ok) {
+                if (code) toast(`Room ID ${code}`);
+                setCreate({ name: "", title: "", hostUser: "" });
+                loadRooms();
+              }
+            }}
+          >
+            <Swords className="h-4 w-4" aria-hidden /> Create new room
+          </Button>
+          <p className="text-xs text-muted sm:col-span-4">Or make a new one: the system gives it its own room ID, owned by the official Panchayat account; the host becomes its admin and can change everything (name, cover, background, PK) from the app. It shows at the top of Rooms.</p>
+        </div>
         <p className="border-b border-line px-4 py-2 text-xs text-muted">Host admin: made a room admin there, so they can set up, start and close its PK (1 vs 1 or multiplayer, any rule or length) from inside the app itself — add more below.</p>
         <div className="flex flex-wrap items-end gap-3 border-b border-line px-4 py-3">
           <Chips label="Mode" value={battle.mode} onChange={(v) => setBattle((b) => ({ ...b, mode: v }))} options={[{ value: "1v1", label: "1 vs 1" }, { value: "team", label: "Team" }]} />
@@ -254,6 +285,15 @@ export function PkSystemPage() {
                   </p>
                   <p className="truncate text-xs text-muted">
                     Room ID {r.roomCode} · {r.title || "no title"} · owner {r.ownerName ?? "?"} · {r.online} online
+                  </p>
+                  <p className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                    <label className={`cursor-pointer font-semibold text-gold ${busy === `bg${r.roomId}` ? "opacity-50" : ""}`}>
+                      {busy === `bg${r.roomId}` ? "Uploading…" : "Upload background (picture, GIF or MP4, up to 100 MB)"}
+                      <input type="file" accept="image/*,video/mp4" className="sr-only" disabled={busy === `bg${r.roomId}`} onChange={(e) => { void uploadBackground(r.roomId, e.target.files?.[0]); e.target.value = ""; }} />
+                    </label>
+                    <button type="button" className="text-muted underline" onClick={() => void run(`bgx${r.roomId}`, () => apiRequest(`/api/v1/admin/pk/rooms/${r.roomId}/background`, { method: "DELETE" }), "Background removed")}>
+                      remove
+                    </button>
                   </p>
                   <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted">
                     Host admins:{" "}
