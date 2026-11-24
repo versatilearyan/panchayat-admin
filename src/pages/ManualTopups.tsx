@@ -11,6 +11,7 @@ import { apiRequest, apiUpload } from "../lib/api";
 import { Badge, Button, Card, Chips, Empty, ErrorNote, Loading, PageHeader, Toggle, fmtCoins } from "../components/ui";
 import { NeedsBackend } from "../components/WalletParts";
 import { mediaHref } from "../components/MediaParts";
+import { RoyalPackCard } from "./RoyalPackCard";
 
 type Status = "REQUESTED" | "SUBMITTED" | "APPROVED" | "REJECTED" | "CANCELLED";
 type Item = {
@@ -19,6 +20,9 @@ type Item = {
   status: Status;
   user: { id: string; publicId: number; name: string };
   packName: string;
+  kind?: "COIN_PACK" | "ROYAL";
+  plateName?: string | null;
+  royalTitle?: "KING" | "QUEEN" | null;
   amountInr: number;
   coins: number;
   utr: string | null;
@@ -58,6 +62,7 @@ function Live() {
       <PageHeader title="Manual top-ups" sub="People who couldn't pay with the gateway pay your UPI ID and send the transaction ID. Check it in your bank, then approve." />
       <RevenueCard />
       <SettingsCard />
+      <RoyalPackCard />
       <Requests />
     </>
   );
@@ -358,7 +363,7 @@ function Requests() {
   }, [load]);
 
   const approve = async (i: Item) => {
-    if (!window.confirm(`Did you see ${inr(i.amountInr)} with transaction ID ${i.utr} in your bank?\n\nApprove adds ${fmtCoins(i.coins)} coins to ${i.user.name}. This can't be undone.`)) return;
+    if (!window.confirm(`Did you see ${inr(i.amountInr)} with transaction ID ${i.utr} in your bank?\n\nApprove gives ${i.kind === "ROYAL" ? `the whole Royal Pack (${fmtCoins(i.coins)} coins, frame "${i.plateName ?? ""}", titles)` : `${fmtCoins(i.coins)} coins`} to ${i.user.name}. This can't be undone.`)) return;
     setActing(i.id);
     try {
       await apiRequest(`${base}/${encodeURIComponent(i.id)}/approve`, { method: "POST" });
@@ -433,8 +438,13 @@ function Requests() {
                   {i.user.name} <span className="font-normal text-muted">· ID {i.user.publicId}</span>
                 </span>
                 <span className="block text-sm">
-                  {i.packName} · <b>{inr(i.amountInr)}</b> → {fmtCoins(i.coins)} coins
+                  {i.kind === "ROYAL" ? <Badge tone="warn">👑 Royal</Badge> : null} {i.packName} · <b>{inr(i.amountInr)}</b> → {fmtCoins(i.coins)} coins
                 </span>
+                {i.kind === "ROYAL" ? (
+                  <span className="block text-sm">
+                    Frame name <b>“{i.plateName}”</b> · Royal Nawab + {i.royalTitle === "QUEEN" ? "Panchayat Queen" : "Panchayat King"}
+                  </span>
+                ) : null}
                 {i.utr ? (
                   <span className="mt-0.5 block font-mono text-sm">
                     UTR {i.utr}{" "}

@@ -5,7 +5,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { Plus, Trash2, Upload, UserMinus } from "lucide-react";
-import { BACKEND_ENABLED } from "../config/api";
+import { BACKEND_ENABLED, USER_APP_URL } from "../config/api";
 import { useAdmin } from "../context";
 import { apiRequest, apiUpload } from "../lib/api";
 import { Badge, Button, Card, Empty, Loading, PageHeader, Toggle } from "../components/ui";
@@ -20,6 +20,7 @@ type Frame = {
   imageUrl: string | null;
   frameScale: number;
   frameY: number;
+  displaySize: number;
   plateX: number;
   plateY: number;
   plateW: number;
@@ -31,6 +32,8 @@ type Frame = {
   rules: Rule[];
 };
 type Holder = { userId: number; publicId?: number; name: string; expiresAt: string | null; equipped: boolean };
+/** A picture the website ships (/frames/...) lives on the user app, not here. */
+export const frameSrc = (u: string | null) => (u && u.startsWith("/frames/") ? USER_APP_URL + u : u ?? "");
 const msg = (e: unknown, f: string) => (e instanceof Error && e.message ? e.message : f);
 const KIND: Record<string, string> = { TOPUP_TOTAL: "Total top-up", TOPUP_ONE: "Single top-up" };
 
@@ -90,7 +93,7 @@ function Preview({ f }: { f: Frame }) {
         {f.imageUrl ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={f.imageUrl} alt="" className="pointer-events-none absolute left-1/2 top-1/2 max-w-none" style={{ width: w, height: w, transform: `translate(-50%, -${f.frameY * 100}%)` }} />
+            <img src={frameSrc(f.imageUrl)} alt="" className="pointer-events-none absolute left-1/2 top-1/2 max-w-none" style={{ width: w, height: w, transform: `translate(-50%, -${f.frameY * 100}%)` }} />
             <span className="pointer-events-none absolute left-1/2 top-1/2" style={{ width: w, height: w, transform: `translate(-50%, -${f.frameY * 100}%)` }}>
               <span
                 className="absolute grid place-items-center overflow-hidden whitespace-nowrap text-center font-black leading-none"
@@ -141,7 +144,7 @@ function FrameCard({ f, canSave, onChanged }: { f: Frame; canSave: boolean; onCh
       () =>
         apiRequest(`${base}/${f.id}`, {
           method: "PATCH",
-          body: { name: d.name, frameScale: d.frameScale, frameY: d.frameY, plateX: d.plateX, plateY: d.plateY, plateW: d.plateW, plateH: d.plateH, textColor: d.textColor, strokeColor: d.strokeColor },
+          body: { name: d.name, frameScale: d.frameScale, displaySize: d.displaySize, frameY: d.frameY, plateX: d.plateX, plateY: d.plateY, plateW: d.plateW, plateH: d.plateH, textColor: d.textColor, strokeColor: d.strokeColor },
         }),
       "Saved",
     );
@@ -195,6 +198,7 @@ function FrameCard({ f, canSave, onChanged }: { f: Frame; canSave: boolean; onCh
               </label>
               {num("frameScale", "Frame size", "Frame width ÷ avatar width (about 1.4)")}
               {num("frameY", "Avatar centre", "How far down the frame the avatar sits (0 to 1)")}
+              {num("displaySize", "Size on the seat", "How big the frame is drawn around a seat / profile picture (1 to 3; VIP frames 1.45)")}
               {num("plateX", "Plate left %", undefined)}
               {num("plateY", "Plate top %", undefined)}
               {num("plateW", "Plate width %", undefined)}

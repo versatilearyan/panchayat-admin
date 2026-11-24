@@ -209,7 +209,7 @@ export function AssetUpload({ id, value, onChange, onStateChange }: Props) {
               <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wider uppercase ring-1 ${kind !== "image" ? "bg-coral/15 text-[#ff9095] ring-coral/30" : "bg-cream/[0.06] text-muted ring-line-strong"}`}>{kindLabel}</span>
             </p>
           ) : (
-            <p className="mt-1 leading-snug text-muted">{ASSET_KINDS_TEXT}, up to 5 MB.</p>
+            <p className="mt-1 leading-snug text-muted">{ASSET_KINDS_TEXT}, up to 100 MB.</p>
           )}
         </div>
         <div className="flex shrink-0 gap-2">

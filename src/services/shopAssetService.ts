@@ -3,11 +3,11 @@ import { BACKEND_URL, ENDPOINTS } from "../config/api";
 import { apiUpload, ApiError, unwrap, type Upload } from "../lib/api";
 import { getSession } from "../api/session";
 
-export const ASSET_MAX_BYTES = 5 * 1024 * 1024;
+export const ASSET_MAX_BYTES = 100 * 1024 * 1024;
 /** Same limit as pictures, matching the backend. */
-export const SVGA_MAX_BYTES = 5 * 1024 * 1024;
+export const SVGA_MAX_BYTES = 100 * 1024 * 1024;
 /** MP4 is heavier than a picture or SVGA, matching the backend's own limit for this upload. */
-export const MP4_MAX_BYTES = 20 * 1024 * 1024;
+export const MP4_MAX_BYTES = 100 * 1024 * 1024;
 export const ASSET_ACCEPT = ".png,.jpg,.jpeg,.webp,.svg,.svga,.mp4,image/png,image/jpeg,image/webp,image/svg+xml,video/mp4";
 export const ASSET_KINDS_TEXT = "PNG, JPG, JPEG, WEBP, SVG, SVGA or MP4";
 const ASSET_TYPES: Record<string, string[]> = {
