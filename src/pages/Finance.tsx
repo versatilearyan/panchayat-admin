@@ -6,7 +6,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { BACKEND_ENABLED } from "../config/api";
 import { useAdmin } from "../context";
-import { Badge, Button, Card, Chips, Empty, fmtCoins, Loading, PageHeader } from "../components/ui";
+import { Badge, Button, Card, Chips, Empty, fmtCoins, Loading, PageHeader, Toggle } from "../components/ui";
+import { apiRequest } from "../lib/api";
 import { NeedsBackend, Pager } from "../components/WalletParts";
 import { financeService, type AuditEntry, type CoinLog, type Payment, type RevenueSummary } from "../services/financeService";
 import type { Paged } from "../services/rewardService";
@@ -76,6 +77,52 @@ function Tile({ label, amount, sub }: { label: string; amount: string; sub: stri
   );
 }
 
+/**
+ * Payment gateway (PayU) on / off. Off: the app sends every coin pack, VIP and checkout to Munshi ji (UPI QR + proof),
+ * and the server refuses new PayU payments. Saved at once.
+ */
+function GatewaySwitch() {
+  const { toast } = useAdmin();
+  const [closed, setClosed] = useState<boolean | null>(null);
+  const [name, setName] = useState("Munshi ji");
+  const [busy, setBusy] = useState(false);
+  const url = "/api/v1/admin/manage/manual-topups/settings";
+  useEffect(() => {
+    apiRequest<{ gatewayClosed?: boolean; name?: string }>(url)
+      .then((s) => {
+        setClosed(Boolean(s.gatewayClosed));
+        if (s.name) setName(s.name);
+      })
+      .catch(() => setClosed(null));
+  }, []);
+  const set = async (on: boolean) => {
+    setBusy(true);
+    try {
+      const s = await apiRequest<{ gatewayClosed?: boolean }>(`${url}/gateway`, { method: "PUT", body: { closed: !on } });
+      setClosed(Boolean(s.gatewayClosed));
+      toast(on ? "Payment gateway is ON" : `Payment gateway is OFF: everyone pays ${name} by UPI`);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Couldn't change it", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (closed === null) return null;
+  return (
+    <Card className="mb-4">
+      <div className={`flex flex-wrap items-center gap-3 p-4 ${closed ? "bg-coral/10" : ""}`}>
+        <span className="min-w-0 flex-1 basis-64">
+          <span className="block font-semibold">Payment gateway (PayU): {closed ? <Badge tone="coral">OFF</Badge> : <Badge tone="ok">ON</Badge>}</span>
+          <span className="mt-1 block text-xs text-muted">
+            {closed ? `Off: coin packs, VIP and checkout go to ${name} (UPI QR + proof). No new PayU payments.` : `On: people pay with PayU. Turn it off to send everyone to ${name} for a while.`}
+          </span>
+        </span>
+        <Toggle checked={!closed} onChange={(v) => void set(v)} label={busy ? "Saving…" : closed ? "Off" : "On"} />
+      </div>
+    </Card>
+  );
+}
+
 function Revenue() {
   const [days, setDays] = useState(30);
   const { data, error, loading } = useServer<RevenueSummary>(() => financeService.revenue(days), [days]);
@@ -83,6 +130,7 @@ function Revenue() {
   return (
     <>
       <PageHeader title="Revenue" sub="Successful top-ups in the app and website (PayU), in rupees. Days are India time." />
+      <GatewaySwitch />
       <Problem text={error} />
       {!data ? (
         loading ? (
