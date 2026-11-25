@@ -1,7 +1,7 @@
 /**
  * VIP Management → Cosmetics, live from the backend (/api/v1/admin/vip/cosmetics).
  * Super Admins upload each VIP level's frame, chat bubble, entry animation and badge;
- * the backend stores them on Cloudinary. Everything shown here comes from the server's
+ * the backend stores them on this server. Everything shown here comes from the server's
  * list: the counts, the per-level completeness and the table.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from "react";
@@ -18,7 +18,9 @@ import {
   VIP_LEVELS,
   cosmeticFileProblem,
   cosmeticForm,
+  deleteVipCosmetic,
   getVipCosmetics,
+  replaceVipCosmeticFile,
   typeLabel,
   uploadVipCosmetic,
   type CosmeticFormat,
@@ -176,11 +178,11 @@ function CosmeticsLive() {
             ) : shown.length === 0 ? (
               <Empty>No cosmetics match these filters.</Empty>
             ) : (
-              <CosmeticTable rows={shown} onPreview={setPreview} />
+              <CosmeticTable rows={shown} onPreview={setPreview} onChanged={() => void reload()} />
             )}
             {rows.length ? (
               <p className="border-t border-line px-4 py-2.5 text-xs text-muted">
-                {shown.length === rows.length ? `${rows.length} cosmetics` : `${shown.length} of ${rows.length} cosmetics`}. To change a file, the backend needs a replace endpoint; it doesn't have one yet.
+                {shown.length === rows.length ? `${rows.length} cosmetics` : `${shown.length} of ${rows.length} cosmetics`}. Use Replace to upload a new file for a row, or Delete to remove it. Files are kept on this server.
               </p>
             ) : null}
           </Card>
@@ -302,9 +304,60 @@ function LevelsOverview({ rows, active, onPick }: { rows: VipCosmetic[]; active:
 
 /* ---------- table ---------- */
 
-function CosmeticTable({ rows, onPreview }: { rows: VipCosmetic[]; onPreview: (c: VipCosmetic) => void }) {
+function CosmeticTable({ rows, onPreview, onChanged }: { rows: VipCosmetic[]; onPreview: (c: VipCosmetic) => void; onChanged: () => void }) {
+  const { toast } = useAdmin();
+  const picker = useRef<HTMLInputElement>(null);
+  const [target, setTarget] = useState<VipCosmetic | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [pct, setPct] = useState(0);
+  const pick = (r: VipCosmetic) => {
+    setTarget(r);
+    picker.current?.click();
+  };
+  const replace = async (file: File | undefined) => {
+    const r = target;
+    if (!file || !r) return;
+    const problem = cosmeticFileProblem(file, r.format as CosmeticFormat);
+    if (problem) return toast(problem, "error");
+    setBusy(r.id);
+    setPct(0);
+    try {
+      await replaceVipCosmeticFile(r.id, file, (f) => setPct(f)).promise;
+      toast(`VIP ${r.vipLevel} ${typeLabel(r.cosmeticType).toLowerCase()} replaced`);
+      onChanged();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Couldn't replace the file", "error");
+    } finally {
+      setBusy(null);
+      setTarget(null);
+    }
+  };
+  const remove = async (r: VipCosmetic) => {
+    if (!window.confirm(`Delete VIP ${r.vipLevel} ${typeLabel(r.cosmeticType).toLowerCase()} (${r.format})? People with VIP ${r.vipLevel} stop seeing it until you upload a new one.`)) return;
+    setBusy(r.id);
+    try {
+      await deleteVipCosmetic(r.id);
+      toast(`VIP ${r.vipLevel} ${typeLabel(r.cosmeticType).toLowerCase()} deleted`);
+      onChanged();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Couldn't delete it", "error");
+    } finally {
+      setBusy(null);
+    }
+  };
   return (
     <div className="overflow-x-auto">
+      <input
+        ref={picker}
+        type="file"
+        accept={target?.format === "PNG" ? ".png,image/png" : ".svga"}
+        className="hidden"
+        aria-label="Replacement file"
+        onChange={(e) => {
+          void replace(e.target.files?.[0]);
+          e.target.value = "";
+        }}
+      />
       <table className="w-full min-w-[820px] text-left text-sm">
         <thead className="text-[11px] tracking-wide text-muted uppercase">
           <tr className="border-b border-line">
@@ -316,6 +369,7 @@ function CosmeticTable({ rows, onPreview }: { rows: VipCosmetic[]; onPreview: (c
             <th className="px-3 py-2.5 font-semibold">Uploaded</th>
             <th className="px-3 py-2.5 font-semibold">Status</th>
             <th className="px-4 py-2.5 text-right font-semibold">Asset</th>
+            <th className="px-4 py-2.5 text-right font-semibold">Edit</th>
           </tr>
         </thead>
         <tbody>
@@ -348,6 +402,20 @@ function CosmeticTable({ rows, onPreview }: { rows: VipCosmetic[]; onPreview: (c
                   </a>
                 ) : (
                   <span className="text-xs text-muted">—</span>
+                )}
+              </td>
+              <td className="px-4 py-2 text-right whitespace-nowrap">
+                {busy === r.id ? (
+                  <span className="text-xs text-muted">{target ? `Uploading… ${Math.round(pct * 100)}%` : "…"}</span>
+                ) : (
+                  <span className="inline-flex gap-1.5">
+                    <Button size="sm" disabled={busy !== null} onClick={() => pick(r)}>
+                      <RotateCcw className="h-3.5 w-3.5" /> Replace
+                    </Button>
+                    <Button size="sm" variant="ghost" disabled={busy !== null} onClick={() => void remove(r)}>
+                      <X className="h-3.5 w-3.5" /> Delete
+                    </Button>
+                  </span>
                 )}
               </td>
             </tr>
@@ -444,7 +512,7 @@ function UploadDialog({ existing, onClose, onDone }: { existing: VipCosmetic[]; 
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!file || fileError || duplicate || inFlight.current) return;
+    if (!file || fileError || inFlight.current) return;
     if (!formats.includes(format)) return setError("Pick a format this type allows.");
     inFlight.current = true;
     setError(null);
@@ -552,7 +620,7 @@ function UploadDialog({ existing, onClose, onDone }: { existing: VipCosmetic[]; 
 
         {duplicate ? (
           <p className="rounded-xl bg-warn/10 px-3.5 py-2.5 text-sm text-warn ring-1 ring-warn/30" role="status">
-            VIP {level} already has a {typeLabel(type).toLowerCase()} in {format}. The backend keeps one per level, type and format and has no replace endpoint yet, so this can't be uploaded again.
+            VIP {level} already has a {typeLabel(type).toLowerCase()} in {format}. Uploading will REPLACE that file.
           </p>
         ) : null}
 
@@ -571,7 +639,7 @@ function UploadDialog({ existing, onClose, onDone }: { existing: VipCosmetic[]; 
           <Button variant="ghost" className="flex-1" onClick={onClose} disabled={busy}>
             Cancel
           </Button>
-          <Button type="submit" variant="primary" className="flex-[1.4]" busy={busy} disabled={!file || Boolean(fileError) || duplicate}>
+          <Button type="submit" variant="primary" className="flex-[1.4]" busy={busy} disabled={!file || Boolean(fileError)}>
             <Upload className="h-4 w-4" /> Upload
           </Button>
         </div>

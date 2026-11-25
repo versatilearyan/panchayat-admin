@@ -1,13 +1,15 @@
 /**
  * VIP cosmetics on the backend: /api/v1/admin/vip/cosmetics. SUPER_ADMIN only.
  *
- *   GET  /api/v1/admin/vip/cosmetics          → every uploaded cosmetic
- *   POST /api/v1/admin/vip/cosmetics/upload   multipart: file, vipLevel (1–11), type, format
+ *   GET    /api/v1/admin/vip/cosmetics            → every uploaded cosmetic
+ *   POST   /api/v1/admin/vip/cosmetics/upload     multipart: file, vipLevel (1–11), type, format
+ *                                                 (a slot that already has a file gets it REPLACED)
+ *   POST   /api/v1/admin/vip/cosmetics/{id}/file  multipart: file → replace one cosmetic's file
+ *   DELETE /api/v1/admin/vip/cosmetics/{id}       → remove it and its file
  *
- * The backend stores each file on Cloudinary and keeps one asset per VIP level + type +
- * format. There is no replace or delete endpoint yet, so the panel never pretends to
- * replace a file. Uploads go through the shared apiUpload (admin token, progress, and the
- * browser's own multipart boundary).
+ * The backend stores each file on this server (uploads/public/vip) and keeps one asset per
+ * VIP level + type + format. Uploads go through the shared apiUpload (admin token, progress,
+ * and the browser's own multipart boundary).
  */
 import { ENDPOINTS } from "../config/api";
 import { apiRequest, apiUpload, ApiError, unwrap, type Upload } from "../lib/api";
@@ -103,6 +105,18 @@ export function uploadVipCosmetic(form: FormData, onProgress?: (fraction: number
       throw e;
     }),
   };
+}
+
+/** Replace the file of one cosmetic (same level, type and format). */
+export function replaceVipCosmeticFile(id: string, file: File, onProgress?: (fraction: number) => void): Upload<unknown> {
+  const form = new FormData();
+  form.append("file", file);
+  return apiUpload<unknown>(`${ENDPOINTS.vipCosmetics}/${encodeURIComponent(id)}/file`, form, onProgress);
+}
+
+/** Remove a cosmetic and its file. */
+export async function deleteVipCosmetic(id: string): Promise<void> {
+  await apiRequest<unknown>(`${ENDPOINTS.vipCosmetics}/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
 /** Builds the form with the backend's exact field names. */
