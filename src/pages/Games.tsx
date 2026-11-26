@@ -10,7 +10,7 @@ import { Badge, Button, Card, ErrorNote, Loading, PageHeader } from "../componen
 type Row = { id: string; name: string; tables: number | null; players: number | null; inPlay: number | null; bots?: number; enabled: boolean };
 type Live = { games: Row[]; updatedAt: number };
 
-const EMOJI: Record<string, string> = { GADDAR: "🛖", RMCS: "👑", LUDO: "🎲", JACKAROO: "🃏", HILL: "🚙" };
+const EMOJI: Record<string, string> = { GADDAR: "🛖", RMCS: "👑", LUDO: "🎲", JACKAROO: "🃏", HILL: "🚙", DUO: "💞" };
 const base = "/api/v1/admin/manage/games";
 
 export function GamesPage() {
