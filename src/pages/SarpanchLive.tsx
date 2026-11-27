@@ -4,7 +4,7 @@
  * (broadcasts, with cancel), and the automatic message templates.
  * Only the server sends as Sarpanch; this page only asks it to.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BadgeCheck, ImagePlus, Megaphone, Send, Sparkles, X } from "lucide-react";
 import { apiRequest, apiUpload } from "../lib/api";
 import { useAdmin } from "../context";
@@ -29,9 +29,25 @@ type Broadcast = {
 type Template = { key: string; title?: string; body: string; actionLabel?: string; actionUrl?: string; category: string; enabled?: boolean; updatedAt?: string };
 
 const BASE = "/api/v1/admin/sarpanch";
-const CATEGORIES = ["ANNOUNCEMENT", "REWARD", "SAFETY", "PAYMENT", "VIP", "RED_PACKET", "CP", "OTHER"];
+const CATEGORIES = ["ANNOUNCEMENT", "UPDATE", "NEW_GAME", "GAME", "EVENT", "CONTEST", "WINNER", "OFFER", "REWARD", "FRIENDS", "PARIVAR", "SAFETY", "PAYMENT", "VIP", "RED_PACKET", "CP", "OTHER"];
+/** Buttons that need an ID typed next to them: the app opens that person's profile / that room. */
+const ID_ACTIONS: Record<string, { label: string; path: string; hint: string }> = {
+  "@user": { label: "Someone's profile (ID)", path: "/user/", hint: "Their 7-digit app ID" },
+  "@room": { label: "A room (room ID)", path: "/room/", hint: "The room's ID" },
+};
 const ACTIONS = [
   { value: "", label: "No button" },
+  { value: "/game/coop", label: "Game: Duo Dash" },
+  { value: "/game/gaddar", label: "Game: Gaddaar" },
+  { value: "/game/rmcs", label: "Game: Raja Mantri Chor Sipahi" },
+  { value: "/game/ludo", label: "Game: Ludo" },
+  { value: "/game/jackaroo", label: "Game: Jackaroo" },
+  { value: "/game/chess", label: "Game: Chess" },
+  { value: "@user", label: ID_ACTIONS["@user"].label },
+  { value: "@room", label: ID_ACTIONS["@room"].label },
+  { value: "/friends", label: "Friends" },
+  { value: "/friends/requests", label: "Friend requests" },
+  { value: "/notifications", label: "Notifications" },
   { value: "/wallet", label: "Wallet" },
   { value: "/shop", label: "Shop" },
   { value: "/bag", label: "Bag" },
@@ -179,6 +195,24 @@ function Compose() {
   const [category, setCategory] = useState("ANNOUNCEMENT");
   const [actionUrl, setActionUrl] = useState("");
   const [actionLabel, setActionLabel] = useState("");
+  /** The ID for a profile / room button */
+  const [linkId, setLinkId] = useState("");
+  /** Someone to @mention in the message */
+  const [mention, setMention] = useState("");
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const idAction = ID_ACTIONS[actionUrl];
+  const finalUrl = idAction ? (linkId.trim() ? idAction.path + linkId.trim() : "") : actionUrl;
+  /** Put "@ID " into the message where the cursor is. */
+  const addMention = () => {
+    const id = mention.replace(/\D/g, "");
+    if (id.length < 6) return setError("Type the person's app ID (6 to 10 digits) to mention them.");
+    const el = bodyRef.current;
+    const at = el ? el.selectionStart : body.length;
+    const tag = `@${id} `;
+    setBody((b) => (b.slice(0, at) + tag + b.slice(at)).slice(0, 1000));
+    setMention("");
+    setError(null);
+  };
   const [image, setImage] = useState<{ imageUrl: string; previewUrl: string } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -208,7 +242,9 @@ function Compose() {
       .filter((n) => Number.isSafeInteger(n) && n > 0);
     if (to === "users" && !userIds.length) return setError("Enter at least one user ID.");
     if (to !== "users" && !window.confirm(to === "all" ? "Send this to everyone on Panchayat?" : "Send this to everyone who matches the filter?")) return;
-    const message = { title: title.trim() || null, body: body.trim(), category, imageUrl: image?.imageUrl ?? null, actionUrl: actionUrl || null, actionLabel: actionUrl ? actionLabel.trim() || ACTIONS.find((a) => a.value === actionUrl)?.label : null };
+    if (idAction && !/^\d{4,12}$/.test(linkId.trim())) return setError(`Type the ID for the button (${idAction.hint}).`);
+    const defaultLabel = idAction ? (actionUrl === "@user" ? "View profile" : "Join room") : ACTIONS.find((a) => a.value === actionUrl)?.label.replace(/^Game: /, "Play ");
+    const message = { title: title.trim() || null, body: body.trim(), category, imageUrl: image?.imageUrl ?? null, actionUrl: finalUrl || null, actionLabel: finalUrl ? actionLabel.trim() || defaultLabel : null };
     setBusy(true);
     setError(null);
     try {
@@ -291,15 +327,22 @@ function Compose() {
           <label className="label" htmlFor="sp-body">
             Message
           </label>
-          <textarea id="sp-body" rows={4} maxLength={1000} className="field resize-none" value={body} onChange={(e) => setBody(e.target.value)} />
-          <p className="mt-1 text-right text-[11px] text-muted">{body.length}/1000</p>
+          <textarea id="sp-body" ref={bodyRef} rows={6} maxLength={1000} className="field resize-y" value={body} onChange={(e) => setBody(e.target.value)} />
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <input className="field !h-9 !w-44 font-mono text-sm" value={mention} onChange={(e) => setMention(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addMention())} placeholder="App ID to mention" aria-label="App ID to mention" />
+            <Button variant="soft" onClick={addMention}>
+              @ Mention
+            </Button>
+            <span className="text-[11px] text-muted">In the app @ID shows their name; tapping it opens their profile. No **bold**: stars show as they are.</span>
+            <span className="ml-auto text-[11px] text-muted">{body.length}/1000</span>
+          </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="sp-act">
               Button opens
             </label>
-            <select id="sp-act" className="field" value={actionUrl} onChange={(e) => setActionUrl(e.target.value)}>
+            <select id="sp-act" className="field" value={actionUrl} onChange={(e) => (setActionUrl(e.target.value), setLinkId(""))}>
               {ACTIONS.map((a) => (
                 <option key={a.value} value={a.value}>
                   {a.label}
@@ -311,8 +354,16 @@ function Compose() {
             <label className="label" htmlFor="sp-actl">
               Button text
             </label>
-            <input id="sp-actl" className="field" maxLength={40} disabled={!actionUrl} value={actionLabel} onChange={(e) => setActionLabel(e.target.value)} placeholder={ACTIONS.find((a) => a.value === actionUrl)?.label ?? ""} />
+            <input id="sp-actl" className="field" maxLength={40} disabled={!actionUrl} value={actionLabel} onChange={(e) => setActionLabel(e.target.value)} placeholder={idAction ? (actionUrl === "@user" ? "View profile" : "Join room") : (ACTIONS.find((a) => a.value === actionUrl)?.label.replace(/^Game: /, "Play ") ?? "")} />
           </div>
+          {idAction ? (
+            <div className="sm:col-span-2">
+              <label className="label" htmlFor="sp-link-id">
+                {idAction.hint}
+              </label>
+              <input id="sp-link-id" className="field font-mono" inputMode="numeric" value={linkId} onChange={(e) => setLinkId(e.target.value.replace(/\D/g, ""))} placeholder="e.g. 4228012" />
+            </div>
+          ) : null}
         </div>
         <div>
           <span className="label">Picture (optional)</span>
@@ -447,7 +498,7 @@ function Templates() {
                 <div className="grid grid-cols-2 gap-2">
                   <input className="field" value={edit.actionLabel ?? ""} onChange={(e) => setEdit({ ...edit, actionLabel: e.target.value })} placeholder="Button text" aria-label="Button text" />
                   <select className="field" value={edit.actionUrl ?? ""} onChange={(e) => setEdit({ ...edit, actionUrl: e.target.value })} aria-label="Button opens">
-                    {ACTIONS.map((a) => (
+                    {ACTIONS.filter((a) => !a.value.startsWith("@")).map((a) => (
                       <option key={a.value} value={a.value}>
                         {a.label}
                       </option>
